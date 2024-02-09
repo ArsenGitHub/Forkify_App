@@ -691,7 +691,6 @@ const renderRecipe = function(recipe) {
 };
 // Отображение спинера загрузки
 const renderSpinner = function(parentEl) {
-    console.log("dfgdfgd");
     const html = `
     <div class="spinner">
       <svg>
@@ -720,8 +719,11 @@ const renderError = function(err) {
 // request for recipe
 const requestForRecipes = async function() {
     try {
+        // хэш можно достать из обьекта window или через обьект event от прослушивателя
+        const recipeId = window.location.hash.slice(1);
+        if (!recipeId) return;
         renderSpinner(recipeContainer);
-        const response = await fetch("https://forkify-api.herokuapp.com/api/v2/recipes/5ed6604591c37cdc054bc886");
+        const response = await fetch(`https://forkify-api.herokuapp.com/api/v2/recipes/${recipeId}`);
         const data = await response.json();
         if (!response.ok) throw new Error(`${data.message}(${response.status})`);
         let { recipe } = data.data;
@@ -740,7 +742,15 @@ const requestForRecipes = async function() {
         alert(err);
     }
 };
-requestForRecipes();
+// Прослушиваем событие hashchange на обьекте window
+// window.addEventListener('hashchange', requestForRecipes);
+// Т.к. нам необходимо отобразить рецепт при событии hashchange и при загрузке страницы при помощи ссылки на сам рецепт(для этого используем событие load). При этом мы используем один и тот же обработчик события(event handler). Также необходимо использовать guard clause в requestForRecipes, чтобы он не выполнялся, просто при открытии сайта, т.к. там хэш будет пустой
+[
+    "load",
+    "hashchange"
+].forEach((ev)=>{
+    window.addEventListener(ev, requestForRecipes);
+});
 
 },{"core-js/modules/web.immediate.js":"49tUX","regenerator-runtime/runtime":"dXNgZ","url:../img/icons.svg":"loVOp","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"49tUX":[function(require,module,exports) {
 "use strict";
