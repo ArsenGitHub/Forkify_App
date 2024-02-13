@@ -6,14 +6,6 @@ import recipeView from './views/recipeView.js';
 import 'core-js/stable';
 import 'regenerator-runtime/runtime';
 
-const timeout = function (s) {
-  return new Promise(function (_, reject) {
-    setTimeout(function () {
-      reject(new Error(`Request took too long! Timeout after ${s} second`));
-    }, s * 1000);
-  });
-};
-
 // Управляет запросом данных в модели и отображением всего в представлении
 const controlRecipes = async function () {
   try {
@@ -29,7 +21,7 @@ const controlRecipes = async function () {
     // Отображаем рецепт
     recipeView.renderRecipe(model.state.recipe);
   } catch (err) {
-    alert(err);
+    console.error(err);
   }
 };
 
