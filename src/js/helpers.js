@@ -20,6 +20,6 @@ export const getData = async function (url) {
 
     return data;
   } catch (err) {
-    throw new Error(err);
+    throw err;
   }
 };

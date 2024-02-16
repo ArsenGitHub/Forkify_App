@@ -3,14 +3,44 @@ import icons from 'url:../../img/icons.svg';
 // Библиотека(десятичные => дробные для рецепта)
 import { Fraction } from 'fractional';
 
+const recipeListContainer = document.querySelector('.results');
+
 // Класс с функционалом отображения
 class RecipeView {
-  // Родительский блок, куда вставляется верстка
+  // Родительский блок, куда вставляется верстка рецепта
   #parentEl = document.querySelector('.recipe');
   // Данные из сервера
   #data;
+  #errorMessage = 'Can not find recipe. Try another one!';
+  #succesMessage = '';
+  // Отображение списка рецептов
+  renderRecipeList(recipesArr) {
+    const html = recipesArr.reduce((acc, recipe) => {
+      const card = `
+      <li class="preview">
+        <a class="preview__link preview__link--active" href="#${recipe.id}">
+          <figure class="preview__fig">
+            <img src="${recipe.imageUrl}" alt="Recipe img" />
+          </figure>
+          <div class="preview__data">
+            <h4 class="preview__title">${recipe.title}</h4>
+            <p class="preview__publisher">${recipe.publisher}</p>
+            <div class="preview__user-generated">
+              <svg>
+                <use href="${icons}#icon-user"></use>
+              </svg>
+            </div>
+          </div>
+        </a>
+      </li>
+      `;
+      return acc + card;
+    }, '');
+    recipeListContainer.innerHTML = '';
+    recipeListContainer.insertAdjacentHTML('afterbegin', html);
+  }
 
-  // Отображение рецептов(Public API)
+  // Отображение рецепта(Public API)
   renderRecipe(data) {
     this.#data = data;
     const html = this.#createHtml();
@@ -26,6 +56,36 @@ class RecipeView {
         </svg>
       </div>
     `;
+    this.#clearAndInsert(html);
+  }
+
+  // Отображение блока с ошибкой
+  renderError(err = this.#errorMessage) {
+    const html = `
+    <div class="error">
+      <div>
+        <svg>
+          <use href="${icons}#icon-alert-triangle"></use>
+        </svg>
+      </div>
+      <p>${err}</p>
+    </div>
+        `;
+    this.#clearAndInsert(html);
+  }
+
+  // Отображение блока с сообщением о удачной попытке чего-либо
+  renderSuccess(message = this.#succesMessage) {
+    const html = `
+      <div class="message">
+        <div>
+            <svg>
+              <use href="${icons}#icon-smile"></use>
+            </svg>
+        </div>
+        <p>${message}</p>
+      </div>
+        `;
     this.#clearAndInsert(html);
   }
 
@@ -110,7 +170,7 @@ class RecipeView {
               </div>
             </li>
             `;
-          return (acc += ingredient);
+          return acc + ingredient;
         }, '')}
         </ul>
       </div>
@@ -135,6 +195,8 @@ class RecipeView {
       </div> 
     `;
   }
+
+  // Publisher-Subscriber Pattern
   addHandlerRender(handler) {
     ['load', 'hashchange'].forEach((ev) => {
       window.addEventListener(ev, handler);

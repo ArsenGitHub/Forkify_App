@@ -586,13 +586,15 @@ var _modelJs = require("./model.js");
 // Экземпляр(instance) класса recipeView(default import)
 var _recipeViewJs = require("./views/recipeView.js");
 var _recipeViewJsDefault = parcelHelpers.interopDefault(_recipeViewJs);
+// Экземпляр(instance) класса SearchView(default import)
+var _searchViewJs = require("./views/searchView.js");
+var _searchViewJsDefault = parcelHelpers.interopDefault(_searchViewJs);
 var _runtime = require("regenerator-runtime/runtime");
 // Управляет запросом данных в модели и отображением всего в представлении
-const controlRecipes = async function() {
+const controlRecipe = async function() {
     try {
         // Получаем хэш
         const recipeId = window.location.hash.slice(1);
-        // Если пустой хэш
         if (!recipeId) return;
         // Отображаем спинер
         (0, _recipeViewJsDefault.default).renderSpinner();
@@ -601,15 +603,29 @@ const controlRecipes = async function() {
         // Отображаем рецепт
         (0, _recipeViewJsDefault.default).renderRecipe(_modelJs.state.recipe);
     } catch (err) {
-        console.error(err);
+        // Отображаем ошибку в UI
+        (0, _recipeViewJsDefault.default).renderError();
+    }
+};
+const controlSearchResults = async function() {
+    try {
+        // Получаем блюдо из инпута введенное в поиск
+        const dish = (0, _searchViewJsDefault.default).dish;
+        if (!dish) return;
+        // Делаем Ajax запрос рецептов с блюдом
+        await _modelJs.loadSearchResults(dish);
+        (0, _recipeViewJsDefault.default).renderRecipeList(_modelJs.state.search.result);
+    } catch (err) {
+        console.log(err);
     }
 };
 const init = function() {
-    (0, _recipeViewJsDefault.default).addHandlerRender(controlRecipes);
+    (0, _recipeViewJsDefault.default).addHandlerRender(controlRecipe);
+    (0, _searchViewJsDefault.default).addHandlerSearch(controlSearchResults);
 };
 init();
 
-},{"core-js/modules/web.immediate.js":"49tUX","./model.js":"Y4A21","./views/recipeView.js":"l60JC","regenerator-runtime/runtime":"dXNgZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"49tUX":[function(require,module,exports) {
+},{"core-js/modules/web.immediate.js":"49tUX","./model.js":"Y4A21","./views/recipeView.js":"l60JC","regenerator-runtime/runtime":"dXNgZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./views/searchView.js":"9OQAM"}],"49tUX":[function(require,module,exports) {
 "use strict";
 // TODO: Remove this module from `core-js@4` since it's split to modules listed below
 require("52e9b3eefbbce1ed");
@@ -1846,12 +1862,33 @@ module.exports = function(scheduler, hasTimeArg) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "state", ()=>state);
+parcelHelpers.export(exports, "loadSearchResults", ()=>loadSearchResults);
 parcelHelpers.export(exports, "loadRecipe", ()=>loadRecipe);
 var _config = require("./config");
 // Fetch helper
 var _helpers = require("./helpers");
 const state = {
-    recipe: {}
+    recipe: {},
+    search: {}
+};
+const loadSearchResults = async function(dish) {
+    try {
+        // Данные поиска
+        state.search.result = [];
+        // Блюдо из инпута введенное в поиск, пока не нужно, но может где-то понадобится. Например, самые частые запросы
+        state.search.dish = dish;
+        const data = await (0, _helpers.getData)(`${(0, _config.API_URL)}?search=${dish}&key=b8654b87-eb3f-4393-b226-d15907312864`);
+        data.data.recipes.forEach((recipe)=>{
+            state.search.result.push({
+                id: recipe.id,
+                imageUrl: recipe.image_url,
+                publisher: recipe.publisher,
+                title: recipe.title
+            });
+        });
+    } catch (err) {
+        throw err;
+    }
 };
 const loadRecipe = async function(recipeId) {
     try {
@@ -1868,7 +1905,7 @@ const loadRecipe = async function(recipeId) {
             title: recipe.title
         };
     } catch (err) {
-        console.error(err);
+        throw err;
     }
 };
 
@@ -1935,7 +1972,7 @@ const getData = async function(url) {
         if (!response.ok) throw new Error(`${data.message}(${response.status})`);
         return data;
     } catch (err) {
-        throw new Error(err);
+        throw err;
     }
 };
 
@@ -1947,13 +1984,42 @@ var _iconsSvg = require("url:../../img/icons.svg");
 var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
 // Библиотека(десятичные => дробные для рецепта)
 var _fractional = require("fractional");
+const recipeListContainer = document.querySelector(".results");
 // Класс с функционалом отображения
 class RecipeView {
-    // Родительский блок, куда вставляется верстка
+    // Родительский блок, куда вставляется верстка рецепта
     #parentEl = document.querySelector(".recipe");
     // Данные из сервера
     #data;
-    // Отображение рецептов(Public API)
+    #errorMessage = "Can not find recipe. Try another one!";
+    #succesMessage = "";
+    // Отображение списка рецептов
+    renderRecipeList(recipesArr) {
+        const html = recipesArr.reduce((acc, recipe)=>{
+            const card = `
+      <li class="preview">
+        <a class="preview__link preview__link--active" href="#${recipe.id}">
+          <figure class="preview__fig">
+            <img src="${recipe.imageUrl}" alt="Recipe img" />
+          </figure>
+          <div class="preview__data">
+            <h4 class="preview__title">${recipe.title}</h4>
+            <p class="preview__publisher">${recipe.publisher}</p>
+            <div class="preview__user-generated">
+              <svg>
+                <use href="${(0, _iconsSvgDefault.default)}#icon-user"></use>
+              </svg>
+            </div>
+          </div>
+        </a>
+      </li>
+      `;
+            return acc + card;
+        }, "");
+        recipeListContainer.innerHTML = "";
+        recipeListContainer.insertAdjacentHTML("afterbegin", html);
+    }
+    // Отображение рецепта(Public API)
     renderRecipe(data) {
         this.#data = data;
         const html = this.#createHtml();
@@ -1968,6 +2034,34 @@ class RecipeView {
         </svg>
       </div>
     `;
+        this.#clearAndInsert(html);
+    }
+    // Отображение блока с ошибкой
+    renderError(err = this.#errorMessage) {
+        const html = `
+    <div class="error">
+      <div>
+        <svg>
+          <use href="${(0, _iconsSvgDefault.default)}#icon-alert-triangle"></use>
+        </svg>
+      </div>
+      <p>${err}</p>
+    </div>
+        `;
+        this.#clearAndInsert(html);
+    }
+    // Отображение блока с сообщением о удачной попытке чего-либо
+    renderSuccess(message = this.#succesMessage) {
+        const html = `
+      <div class="message">
+        <div>
+            <svg>
+              <use href="${(0, _iconsSvgDefault.default)}#icon-smile"></use>
+            </svg>
+        </div>
+        <p>${message}</p>
+      </div>
+        `;
         this.#clearAndInsert(html);
     }
     //Очистка родительского блока(верстки) и вставка новой верстки
@@ -2042,7 +2136,7 @@ class RecipeView {
               </div>
             </li>
             `;
-            return acc += ingredient;
+            return acc + ingredient;
         }, "")}
         </ul>
       </div>
@@ -2067,6 +2161,7 @@ class RecipeView {
       </div> 
     `;
     }
+    // Publisher-Subscriber Pattern
     addHandlerRender(handler) {
         [
             "load",
@@ -2954,6 +3049,35 @@ try {
     else Function("r", "regeneratorRuntime = r")(runtime);
 }
 
-},{}]},["f0HGD","aenu9"], "aenu9", "parcelRequire3a11")
+},{}],"9OQAM":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+class SearchView {
+    // Форма поиска
+    #parentEl = document.querySelector(".search");
+    #dish = this.#parentEl.querySelector(".search__field").value;
+    // Берем блюдо из инпута введенное в поиск
+    // Делаем это здесь, т.к. инпут является часть UI или логики представления
+    get dish() {
+        const dish = this.#parentEl.querySelector(".search__field").value;
+        this.#clearSearchInput();
+        return dish;
+    }
+    // Чистим инпут
+    #clearSearchInput() {
+        this.#parentEl.querySelector(".search__field").value = "";
+    }
+    // Вешаем прослушиватель(Publisher-Subscriber Pattern)
+    addHandlerSearch(handler) {
+        this.#parentEl.addEventListener("submit", function(e) {
+            // Предотвращаем перезагрузку страницы при отправке формы
+            e.preventDefault();
+            handler();
+        });
+    }
+}
+exports.default = new SearchView();
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["f0HGD","aenu9"], "aenu9", "parcelRequire3a11")
 
 //# sourceMappingURL=index.e37f48ea.js.map
