@@ -9,6 +9,11 @@
     margin-left: 4rem;
     height: 4.6rem;
     display: block;
+    transition: 0.2s all;
+    &:hover {
+      cursor: pointer;
+      transform: scale(1.05);
+    }
   }
 }
 

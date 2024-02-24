@@ -1,25 +1,29 @@
+const logo = document.querySelector('.header__logo');
+logo.addEventListener('click', function () {
+  window.location.hash = '';
+  window.location.reload();
+});
+
 class SearchView {
   // Форма поиска
-  #parentEl = document.querySelector('.search');
-  #dish = this.#parentEl.querySelector('.search__field').value;
+  _parentEl = document.querySelector('.search');
+  _dish;
 
   // Берем блюдо из инпута введенное в поиск
-  // Делаем это здесь, т.к. инпут является часть UI или логики представления
   get dish() {
-    const dish = this.#parentEl.querySelector('.search__field').value;
-    this.#clearSearchInput();
-    return dish;
+    this._dish = this._parentEl.querySelector('.search__field').value;
+    this._clearSearchInput();
+    return this._dish;
   }
 
   // Чистим инпут
-  #clearSearchInput() {
-    this.#parentEl.querySelector('.search__field').value = '';
+  _clearSearchInput() {
+    this._parentEl.querySelector('.search__field').value = '';
   }
 
-  // Вешаем прослушиватель(Publisher-Subscriber Pattern)
+  // Вешаем прослушиватель на отправку формы с инпутом(Publisher-Subscriber Pattern)
   addHandlerSearch(handler) {
-    this.#parentEl.addEventListener('submit', function (e) {
-      // Предотвращаем перезагрузку страницы при отправке формы
+    this._parentEl.addEventListener('submit', function (e) {
       e.preventDefault();
       handler();
     });

@@ -4,6 +4,8 @@ import * as model from './model.js';
 import recipeView from './views/recipeView.js';
 // Экземпляр(instance) класса SearchView(default import)
 import searchView from './views/searchView.js';
+// Экземпляр(instance) класса SearchView(default import)
+import resultsView from './views/resultsView.js';
 // Полифилы
 import 'core-js/stable';
 import 'regenerator-runtime/runtime';
@@ -20,7 +22,7 @@ const controlRecipe = async function () {
     // Делаем Ajax запрос рецепта
     await model.loadRecipe(recipeId);
     // Отображаем рецепт
-    recipeView.renderRecipe(model.state.recipe);
+    recipeView.render(model.state.recipe);
   } catch (err) {
     // Отображаем ошибку в UI
     recipeView.renderError();
@@ -33,11 +35,14 @@ const controlSearchResults = async function () {
     const dish = searchView.dish;
     if (!dish) return;
 
+    resultsView.renderSpinner();
+
     // Делаем Ajax запрос рецептов с блюдом
     await model.loadSearchResults(dish);
-    recipeView.renderRecipeList(model.state.search.result);
+
+    resultsView.render(model.state.search.result);
   } catch (err) {
-    console.log(err);
+    console.error(err);
   }
 };
 

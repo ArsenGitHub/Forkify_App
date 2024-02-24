@@ -589,6 +589,9 @@ var _recipeViewJsDefault = parcelHelpers.interopDefault(_recipeViewJs);
 // Экземпляр(instance) класса SearchView(default import)
 var _searchViewJs = require("./views/searchView.js");
 var _searchViewJsDefault = parcelHelpers.interopDefault(_searchViewJs);
+// Экземпляр(instance) класса SearchView(default import)
+var _resultsViewJs = require("./views/resultsView.js");
+var _resultsViewJsDefault = parcelHelpers.interopDefault(_resultsViewJs);
 var _runtime = require("regenerator-runtime/runtime");
 // Управляет запросом данных в модели и отображением всего в представлении
 const controlRecipe = async function() {
@@ -601,7 +604,7 @@ const controlRecipe = async function() {
         // Делаем Ajax запрос рецепта
         await _modelJs.loadRecipe(recipeId);
         // Отображаем рецепт
-        (0, _recipeViewJsDefault.default).renderRecipe(_modelJs.state.recipe);
+        (0, _recipeViewJsDefault.default).render(_modelJs.state.recipe);
     } catch (err) {
         // Отображаем ошибку в UI
         (0, _recipeViewJsDefault.default).renderError();
@@ -612,11 +615,12 @@ const controlSearchResults = async function() {
         // Получаем блюдо из инпута введенное в поиск
         const dish = (0, _searchViewJsDefault.default).dish;
         if (!dish) return;
+        (0, _resultsViewJsDefault.default).renderSpinner();
         // Делаем Ajax запрос рецептов с блюдом
         await _modelJs.loadSearchResults(dish);
-        (0, _recipeViewJsDefault.default).renderRecipeList(_modelJs.state.search.result);
+        (0, _resultsViewJsDefault.default).render(_modelJs.state.search.result);
     } catch (err) {
-        console.log(err);
+        console.error(err);
     }
 };
 const init = function() {
@@ -625,7 +629,7 @@ const init = function() {
 };
 init();
 
-},{"core-js/modules/web.immediate.js":"49tUX","./model.js":"Y4A21","./views/recipeView.js":"l60JC","regenerator-runtime/runtime":"dXNgZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./views/searchView.js":"9OQAM"}],"49tUX":[function(require,module,exports) {
+},{"core-js/modules/web.immediate.js":"49tUX","./model.js":"Y4A21","./views/recipeView.js":"l60JC","regenerator-runtime/runtime":"dXNgZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./views/searchView.js":"9OQAM","./views/resultsView.js":"cSbZE"}],"49tUX":[function(require,module,exports) {
 "use strict";
 // TODO: Remove this module from `core-js@4` since it's split to modules listed below
 require("52e9b3eefbbce1ed");
@@ -1875,8 +1879,9 @@ const loadSearchResults = async function(dish) {
     try {
         // Данные поиска
         state.search.result = [];
-        // Блюдо из инпута введенное в поиск, пока не нужно, но может где-то понадобится. Например, самые частые запросы
+        // Сохраняем блюдо из поиска
         state.search.dish = dish;
+        // Запрашиваем данные рецептов на основе блюда из инпута
         const data = await (0, _helpers.getData)(`${(0, _config.API_URL)}?search=${dish}&key=b8654b87-eb3f-4393-b226-d15907312864`);
         data.data.recipes.forEach((recipe)=>{
             state.search.result.push({
@@ -1968,8 +1973,8 @@ const getData = async function(url) {
             fetch(url),
             timeout((0, _config.TIMEOUT_SEC))
         ]);
-        const data = await response.json();
         if (!response.ok) throw new Error(`${data.message}(${response.status})`);
+        const data = await response.json();
         return data;
     } catch (err) {
         throw err;
@@ -1977,123 +1982,44 @@ const getData = async function(url) {
 };
 
 },{"./config":"k5Hzs","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"l60JC":[function(require,module,exports) {
-// SVG картинки рецептов
+// Родительский класс
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
+var _view = require("./View");
+// SVG картинки рецептов
 var _iconsSvg = require("url:../../img/icons.svg");
 var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
 // Библиотека(десятичные => дробные для рецепта)
 var _fractional = require("fractional");
-const recipeListContainer = document.querySelector(".results");
 // Класс с функционалом отображения
-class RecipeView {
+class RecipeView extends (0, _view.View) {
     // Родительский блок, куда вставляется верстка рецепта
-    #parentEl = document.querySelector(".recipe");
-    // Данные из сервера
-    #data;
-    #errorMessage = "Can not find recipe. Try another one!";
-    #succesMessage = "";
-    // Отображение списка рецептов
-    renderRecipeList(recipesArr) {
-        const html = recipesArr.reduce((acc, recipe)=>{
-            const card = `
-      <li class="preview">
-        <a class="preview__link preview__link--active" href="#${recipe.id}">
-          <figure class="preview__fig">
-            <img src="${recipe.imageUrl}" alt="Recipe img" />
-          </figure>
-          <div class="preview__data">
-            <h4 class="preview__title">${recipe.title}</h4>
-            <p class="preview__publisher">${recipe.publisher}</p>
-            <div class="preview__user-generated">
-              <svg>
-                <use href="${(0, _iconsSvgDefault.default)}#icon-user"></use>
-              </svg>
-            </div>
-          </div>
-        </a>
-      </li>
-      `;
-            return acc + card;
-        }, "");
-        recipeListContainer.innerHTML = "";
-        recipeListContainer.insertAdjacentHTML("afterbegin", html);
-    }
-    // Отображение рецепта(Public API)
-    renderRecipe(data) {
-        this.#data = data;
-        const html = this.#createHtml();
-        this.#clearAndInsert(html);
-    }
-    // Отображение спинера загрузки
-    renderSpinner() {
-        const html = `
-      <div class="spinner">
-        <svg>
-          <use href="${(0, _iconsSvgDefault.default)}#icon-loader"></use>
-        </svg>
-      </div>
-    `;
-        this.#clearAndInsert(html);
-    }
-    // Отображение блока с ошибкой
-    renderError(err = this.#errorMessage) {
-        const html = `
-    <div class="error">
-      <div>
-        <svg>
-          <use href="${(0, _iconsSvgDefault.default)}#icon-alert-triangle"></use>
-        </svg>
-      </div>
-      <p>${err}</p>
-    </div>
-        `;
-        this.#clearAndInsert(html);
-    }
-    // Отображение блока с сообщением о удачной попытке чего-либо
-    renderSuccess(message = this.#succesMessage) {
-        const html = `
-      <div class="message">
-        <div>
-            <svg>
-              <use href="${(0, _iconsSvgDefault.default)}#icon-smile"></use>
-            </svg>
-        </div>
-        <p>${message}</p>
-      </div>
-        `;
-        this.#clearAndInsert(html);
-    }
-    //Очистка родительского блока(верстки) и вставка новой верстки
-    #clearAndInsert(html) {
-        this.#parentEl.innerHTML = "";
-        this.#parentEl.insertAdjacentHTML("beforeend", html);
-    }
+    _parentEl = document.querySelector(".recipe");
     // Возвращает верстку блока рецепта
-    #createHtml() {
+    _createHtml() {
         return `
       <figure class="recipe__fig">
-        <img src="${this.#data.imageUrl}" alt="${this.#data.title}" class="recipe__img" />
+        <img src="${this._data.imageUrl}" alt="${this._data.title}" class="recipe__img" />
         <h1 class="recipe__title">
-          <span>${this.#data.title}</span>
+          <span>${this._data.title}</span>
         </h1>
       </figure>
-  
+
       <div class="recipe__details">
         <div class="recipe__info">
           <svg class="recipe__info-icon">
             <use href="${0, _iconsSvgDefault.default}#icon-clock"></use>
           </svg>
-          <span class="recipe__info-data recipe__info-data--minutes">${this.#data.cookingTime}</span>
+          <span class="recipe__info-data recipe__info-data--minutes">${this._data.cookingTime}</span>
           <span class="recipe__info-text">minutes</span>
         </div>
         <div class="recipe__info">
           <svg class="recipe__info-icon">
             <use href="${0, _iconsSvgDefault.default}#icon-users"></use>
           </svg>
-          <span class="recipe__info-data recipe__info-data--people">${this.#data.servings}</span>
+          <span class="recipe__info-data recipe__info-data--people">${this._data.servings}</span>
           <span class="recipe__info-text">servings</span>
-  
+
           <div class="recipe__info-buttons">
             <button class="btn--tiny btn--increase-servings">
               <svg>
@@ -2107,7 +2033,7 @@ class RecipeView {
             </button>
           </div>
         </div>
-  
+
         <div class="recipe__user-generated">
           <svg>
             <use href="${0, _iconsSvgDefault.default}#icon-user"></use>
@@ -2119,11 +2045,11 @@ class RecipeView {
           </svg>
         </button>
       </div>
-  
+
       <div class="recipe__ingredients">
         <h2 class="heading--2">Recipe ingredients</h2>
         <ul class="recipe__ingredient-list">
-        ${this.#data.ingredients.reduce((acc, ingr)=>{
+        ${this._data.ingredients.reduce((acc, ingr)=>{
             const ingredient = `
             <li class="recipe__ingredient">
               <svg class="recipe__icon">
@@ -2140,17 +2066,17 @@ class RecipeView {
         }, "")}
         </ul>
       </div>
-  
+
       <div class="recipe__directions">
         <h2 class="heading--2">How to cook it</h2>
         <p class="recipe__directions-text">
           This recipe was carefully designed and tested by
-          <span class="recipe__publisher">${this.#data.publisher}</span>. Please
+          <span class="recipe__publisher">${this._data.publisher}</span>. Please
           check out directions at their website.
         </p>
         <a
           class="btn--small recipe__btn"
-          href="${this.#data.sourceUrl}"
+          href="${this._data.sourceUrl}"
           target="_blank"
         >
           <span>Directions</span>
@@ -2158,7 +2084,7 @@ class RecipeView {
             <use href="${0, _iconsSvgDefault.default}#icon-arrow-right"></use>
           </svg>
         </a>
-      </div> 
+      </div>
     `;
     }
     // Publisher-Subscriber Pattern
@@ -2173,7 +2099,72 @@ class RecipeView {
 }
 exports.default = new RecipeView();
 
-},{"url:../../img/icons.svg":"loVOp","fractional":"3SU56","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"loVOp":[function(require,module,exports) {
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./View":"5cUXS","url:../../img/icons.svg":"loVOp","fractional":"3SU56"}],"5cUXS":[function(require,module,exports) {
+// SVG картинки рецептов
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "View", ()=>View);
+var _iconsSvg = require("url:../../img/icons.svg");
+var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
+class View {
+    _data;
+    _errorMessage = "Can not find recipe. Try another one!";
+    _succesMessage = "Success";
+    // Отображение рецепта(Public API)
+    render(data) {
+        // Проверяем, что пришедший массив от API не пустой(при ошибке ввода имени рецепта)
+        if (Array.isArray(data) && !data.length) return this.renderError();
+        this._data = data;
+        const html = this._createHtml();
+        this._clearAndInsert(html);
+    }
+    // Отображение спинера загрузки
+    renderSpinner() {
+        const html = `
+      <div class="spinner">
+        <svg>
+          <use href="${(0, _iconsSvgDefault.default)}#icon-loader"></use>
+        </svg>
+      </div>
+    `;
+        this._clearAndInsert(html);
+    }
+    // Отображение блока с ошибкой
+    renderError(err = this._errorMessage) {
+        const html = `
+    <div class="error">
+      <div>
+        <svg>
+          <use href="${(0, _iconsSvgDefault.default)}#icon-alert-triangle"></use>
+        </svg>
+      </div>
+      <p>${err}</p>
+    </div>
+        `;
+        this._clearAndInsert(html);
+    }
+    // Отображение блока с сообщением о удачной попытке чего-либо
+    renderSuccess(message = this._succesMessage) {
+        const html = `
+      <div class="message">
+        <div>
+            <svg>
+              <use href="${(0, _iconsSvgDefault.default)}#icon-smile"></use>
+            </svg>
+        </div>
+        <p>${message}</p>
+      </div>
+        `;
+        this._clearAndInsert(html);
+    }
+    //Очистка родительского блока(верстки) и вставка новой верстки
+    _clearAndInsert(html) {
+        this._parentEl.innerHTML = "";
+        this._parentEl.insertAdjacentHTML("beforeend", html);
+    }
+}
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","url:../../img/icons.svg":"loVOp"}],"loVOp":[function(require,module,exports) {
 module.exports = require("9bcc84ee5d265e38").getBundleURL("hWUTQ") + "icons.dfd7a6db.svg" + "?" + Date.now();
 
 },{"9bcc84ee5d265e38":"lgJ39"}],"lgJ39":[function(require,module,exports) {
@@ -3052,25 +3043,28 @@ try {
 },{}],"9OQAM":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
+const logo = document.querySelector(".header__logo");
+logo.addEventListener("click", function() {
+    window.location.hash = "";
+    window.location.reload();
+});
 class SearchView {
     // Форма поиска
-    #parentEl = document.querySelector(".search");
-    #dish = this.#parentEl.querySelector(".search__field").value;
+    _parentEl = document.querySelector(".search");
+    _dish;
     // Берем блюдо из инпута введенное в поиск
-    // Делаем это здесь, т.к. инпут является часть UI или логики представления
     get dish() {
-        const dish = this.#parentEl.querySelector(".search__field").value;
-        this.#clearSearchInput();
-        return dish;
+        this._dish = this._parentEl.querySelector(".search__field").value;
+        this._clearSearchInput();
+        return this._dish;
     }
     // Чистим инпут
-    #clearSearchInput() {
-        this.#parentEl.querySelector(".search__field").value = "";
+    _clearSearchInput() {
+        this._parentEl.querySelector(".search__field").value = "";
     }
-    // Вешаем прослушиватель(Publisher-Subscriber Pattern)
+    // Вешаем прослушиватель на отправку формы с инпутом(Publisher-Subscriber Pattern)
     addHandlerSearch(handler) {
-        this.#parentEl.addEventListener("submit", function(e) {
-            // Предотвращаем перезагрузку страницы при отправке формы
+        this._parentEl.addEventListener("submit", function(e) {
             e.preventDefault();
             handler();
         });
@@ -3078,6 +3072,35 @@ class SearchView {
 }
 exports.default = new SearchView();
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["f0HGD","aenu9"], "aenu9", "parcelRequire3a11")
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"cSbZE":[function(require,module,exports) {
+// Родительский класс
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+var _view = require("./View");
+class resultsView extends (0, _view.View) {
+    // Родительский блок, куда вставляется верстка рецепта
+    _parentEl = document.querySelector(".results");
+    _createHtml() {
+        return this._data.reduce((acc, recipe)=>{
+            const card = `
+        <li class="preview">
+          <a class="preview__link preview__link" href="#${recipe.id}">
+            <figure class="preview__fig">
+              <img src="${recipe.imageUrl}" alt="${recipe.title}"/>
+            </figure>
+            <div class="preview__data">
+              <h4 class="preview__title">${recipe.title}</h4>
+              <p class="preview__publisher">${recipe.publisher}</p>
+            </div>
+          </a>
+        </li>
+        `;
+            return acc + card;
+        }, "");
+    }
+}
+exports.default = new resultsView();
+
+},{"./View":"5cUXS","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["f0HGD","aenu9"], "aenu9", "parcelRequire3a11")
 
 //# sourceMappingURL=index.e37f48ea.js.map
