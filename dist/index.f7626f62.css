@@ -505,6 +505,8 @@ body {
 .pagination {
   margin-top: auto;
   padding: 0 3.5rem;
+  transition: all .2s;
+  transform: translateY(100vh);
 }
 
 .pagination:after {

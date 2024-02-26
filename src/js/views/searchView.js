@@ -7,13 +7,13 @@ logo.addEventListener('click', function () {
 class SearchView {
   // Форма поиска
   _parentEl = document.querySelector('.search');
-  _dish;
+  #dish;
 
   // Берем блюдо из инпута введенное в поиск
   get dish() {
-    this._dish = this._parentEl.querySelector('.search__field').value;
+    this.#dish = this._parentEl.querySelector('.search__field').value;
     this._clearSearchInput();
-    return this._dish;
+    return this.#dish;
   }
 
   // Чистим инпут
