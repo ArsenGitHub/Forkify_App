@@ -592,6 +592,9 @@ var _searchViewJsDefault = parcelHelpers.interopDefault(_searchViewJs);
 // Экземпляр(instance) класса SearchView(default import)
 var _resultsViewJs = require("./views/resultsView.js");
 var _resultsViewJsDefault = parcelHelpers.interopDefault(_resultsViewJs);
+// Экземпляр(instance) класса PaginationView(default import)
+var _paginationViewJs = require("./views/paginationView.js");
+var _paginationViewJsDefault = parcelHelpers.interopDefault(_paginationViewJs);
 var _runtime = require("regenerator-runtime/runtime");
 // Управляет запросом данных в модели и отображением всего в представлении
 const controlRecipe = async function() {
@@ -618,8 +621,20 @@ const controlSearchResults = async function() {
         (0, _resultsViewJsDefault.default).renderSpinner();
         // Делаем Ajax запрос рецептов с блюдом
         await _modelJs.loadSearchResults(dish);
-        (0, _resultsViewJsDefault.default).render(_modelJs.state.search.result);
-        (0, _resultsViewJsDefault.default).renderBtns();
+        // Отображаем список рецептов
+        (0, _resultsViewJsDefault.default).render(_modelJs.getSearchDataPart(1));
+        // Отображаем нумерацию страниц под рецептами
+        (0, _paginationViewJsDefault.default).render(_modelJs.state.search);
+    } catch (err) {
+        (0, _resultsViewJsDefault.default).renderError();
+    }
+};
+const controlPagination = function() {
+    try {
+        // Отображаем список рецептов
+        (0, _resultsViewJsDefault.default).render(_modelJs.getSearchDataPart(_modelJs.state.search.currentPage));
+        // Отображаем нумерацию страниц под рецептами
+        (0, _paginationViewJsDefault.default).render(_modelJs.state.search);
     } catch (err) {
         (0, _resultsViewJsDefault.default).renderError();
     }
@@ -627,10 +642,11 @@ const controlSearchResults = async function() {
 const init = function() {
     (0, _recipeViewJsDefault.default).addHandlerRender(controlRecipe);
     (0, _searchViewJsDefault.default).addHandlerSearch(controlSearchResults);
+    (0, _paginationViewJsDefault.default).addHandlerPagination(controlPagination);
 };
 init();
 
-},{"core-js/modules/web.immediate.js":"49tUX","./model.js":"Y4A21","./views/recipeView.js":"l60JC","regenerator-runtime/runtime":"dXNgZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./views/searchView.js":"9OQAM","./views/resultsView.js":"cSbZE"}],"49tUX":[function(require,module,exports) {
+},{"core-js/modules/web.immediate.js":"49tUX","./model.js":"Y4A21","./views/recipeView.js":"l60JC","regenerator-runtime/runtime":"dXNgZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./views/searchView.js":"9OQAM","./views/resultsView.js":"cSbZE","./views/paginationView.js":"6z7bi"}],"49tUX":[function(require,module,exports) {
 "use strict";
 // TODO: Remove this module from `core-js@4` since it's split to modules listed below
 require("52e9b3eefbbce1ed");
@@ -1869,12 +1885,16 @@ parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "state", ()=>state);
 parcelHelpers.export(exports, "loadSearchResults", ()=>loadSearchResults);
 parcelHelpers.export(exports, "loadRecipe", ()=>loadRecipe);
+parcelHelpers.export(exports, "getSearchDataPart", ()=>getSearchDataPart);
 var _config = require("./config");
 // Fetch helper
 var _helpers = require("./helpers");
 const state = {
     recipe: {},
-    search: {}
+    search: {
+        currentPage: 1,
+        itemsPerPage: (0, _config.ITEMS_PER_PAGE)
+    }
 };
 const loadSearchResults = async function(dish) {
     try {
@@ -1884,6 +1904,8 @@ const loadSearchResults = async function(dish) {
         state.search.dish = dish;
         // Запрашиваем данные рецептов на основе блюда из инпута
         const data = await (0, _helpers.getData)(`${(0, _config.API_URL)}?search=${dish}&key=b8654b87-eb3f-4393-b226-d15907312864`);
+        // Общее количество страниц необходимое для отображаения рецептов
+        state.search.totalPages = Math.ceil(data.data.recipes.length / state.search.itemsPerPage);
         data.data.recipes.forEach((recipe)=>{
             state.search.result.push({
                 id: recipe.id,
@@ -1914,6 +1936,10 @@ const loadRecipe = async function(recipeId) {
         throw err;
     }
 };
+const getSearchDataPart = function(page = state.search.currentPage) {
+    state.search.currentPage = page;
+    return state.search.result.slice((state.search.currentPage - 1) * state.search.itemsPerPage, state.search.currentPage * state.search.itemsPerPage);
+};
 
 },{"./config":"k5Hzs","./helpers":"hGI1E","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"k5Hzs":[function(require,module,exports) {
 // Forkify API
@@ -1921,8 +1947,10 @@ var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "API_URL", ()=>API_URL);
 parcelHelpers.export(exports, "TIMEOUT_SEC", ()=>TIMEOUT_SEC);
+parcelHelpers.export(exports, "ITEMS_PER_PAGE", ()=>ITEMS_PER_PAGE);
 const API_URL = "https://forkify-api.herokuapp.com/api/v2/recipes/";
 const TIMEOUT_SEC = 10;
+const ITEMS_PER_PAGE = 10;
 
 },{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"gkKU3":[function(require,module,exports) {
 exports.interopDefault = function(a) {
@@ -3078,24 +3106,12 @@ exports.default = new SearchView();
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 var _view = require("./View");
-const btnContainer = document.querySelector(".pagination");
-const btnPrev = document.querySelector(".pagination__btn--prev");
-const btnNext = document.querySelector(".pagination__btn--next");
-const btnPrevTxt = btnPrev.querySelector("span");
-const btnNextTxt = btnNext.querySelector("span");
 class resultsView extends (0, _view.View) {
     // Родительский блок, куда вставляется верстка рецепта
     _parentEl = document.querySelector(".results");
-    // Pagination
-    #displayedItems = 0;
-    #itemsPerPage = 10;
-    #currentPage = 0;
-    constructor(){
-        super();
-        this.btnEvent();
-    }
     _createHtml() {
-        return this._data.slice(this.#displayedItems, this.#displayedItems + this.#itemsPerPage).reduce((acc, recipe)=>{
+        console.log(this._data);
+        return this._data.reduce((acc, recipe)=>{
             const card = `
         <li class="preview">
           <a class="preview__link preview__link" href="#${recipe.id}">
@@ -3112,55 +3128,54 @@ class resultsView extends (0, _view.View) {
             return acc + card;
         }, "");
     }
-    resetPagination() {
-        this.#displayedItems = 0;
-        this.#currentPage = 0;
-        btnPrevTxt.innerText = `Page ${this.#currentPage}`;
-        btnNextTxt.innerText = `Page ${this.#currentPage + 2}`;
-    }
-    hideBtn(btn) {
-        btn.style.transform = "translateY(100vh)";
-    }
-    renderBtn(btn) {
-        btn.style.transform = "translateY(0)";
-    }
-    renderBtns() {
-        this.resetPagination();
-        this.renderBtn(btnContainer);
-        this.hideBtn(btnPrev);
-    }
-    btnEvent() {
-        [
-            btnPrev,
-            btnNext
-        ].forEach((btn, i)=>{
-            btn.addEventListener("click", (function() {
-                if (i === 0) {
-                    this.#displayedItems -= this.#itemsPerPage;
-                    this.render(this._data);
-                    // Скрыть кнопку "предыдущий"
-                    if (this.#currentPage === 1) this.hideBtn(btnPrev);
-                    // Отобразить кнопку "следующий"
-                    if (Math.round(this._data.length / this.#itemsPerPage) - 1 === this.#currentPage) this.renderBtn(btnNext);
-                }
-                if (i === 1) {
-                    this.#displayedItems += this.#itemsPerPage;
-                    this.render(this._data);
-                    // Скрыть кнопку "следующий"
-                    if (this._data.length < this.#displayedItems + this.#itemsPerPage) this.hideBtn(btnNext);
-                    // Отобразить кнопку "предыдущий"
-                    if (this.#currentPage === 0) this.renderBtn(btnPrev);
-                }
-                this.#currentPage = Math.round(this.#displayedItems / this.#itemsPerPage);
-                // Вычислить текущую страницу
-                btnPrevTxt.innerText = `Page ${this.#currentPage}`;
-                btnNextTxt.innerText = `Page ${this.#currentPage + 2}`;
-            }).bind(this));
-        });
-    }
 }
 exports.default = new resultsView();
 
-},{"./View":"5cUXS","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["f0HGD","aenu9"], "aenu9", "parcelRequire3a11")
+},{"./View":"5cUXS","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"6z7bi":[function(require,module,exports) {
+// SVG картинки рецептов
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+var _iconsSvg = require("url:../../img/icons.svg");
+var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
+var _view = require("./View");
+class PaginationView extends (0, _view.View) {
+    _parentEl = document.querySelector(".pagination");
+    // // Pagination
+    // #itemsPerPage = this._data.itemsPerPage;
+    // #currentPage = this._data.currentPage;
+    _createHtml() {
+        const btnPrev = `
+      <button class="btn--inline pagination__btn--prev">
+          <svg class="search__icon">
+              <use href="${(0, _iconsSvgDefault.default)}#icon-arrow-left"></use>
+          </svg>
+          <span>Page ${this._data.currentPage - 1}</span>
+      </button>`;
+        const btnNext = `
+      <button class="btn--inline pagination__btn--next">
+        <span>Page ${this._data.currentPage + 1}</span>
+        <svg class="search__icon">
+            <use href="${(0, _iconsSvgDefault.default)}#icon-arrow-right"></use>
+        </svg>
+      </button>`;
+        if (this._data.currentPage === 1 && this._data.totalPages > 1) return btnNext;
+        if (this._data.totalPages < this._data.currentPage + 1) return btnPrev;
+        if (!(this._data.totalPages - 1)) return;
+        return btnPrev + btnNext;
+    }
+    addHandlerPagination(handler) {
+        this._parentEl.addEventListener("click", (function(e) {
+            const prevBtn = e.target.closest(".pagination__btn--prev");
+            const nextBtn = e.target.closest(".pagination__btn--next");
+            if (!prevBtn && !nextBtn) return;
+            if (prevBtn) this._data.currentPage--;
+            if (nextBtn) this._data.currentPage++;
+            handler();
+        }).bind(this));
+    }
+}
+exports.default = new PaginationView();
+
+},{"url:../../img/icons.svg":"loVOp","./View":"5cUXS","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["f0HGD","aenu9"], "aenu9", "parcelRequire3a11")
 
 //# sourceMappingURL=index.e37f48ea.js.map

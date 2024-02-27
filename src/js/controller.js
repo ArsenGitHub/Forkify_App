@@ -6,6 +6,8 @@ import recipeView from './views/recipeView.js';
 import searchView from './views/searchView.js';
 // Экземпляр(instance) класса SearchView(default import)
 import resultsView from './views/resultsView.js';
+// Экземпляр(instance) класса PaginationView(default import)
+import paginationView from './views/paginationView.js';
 // Полифилы
 import 'core-js/stable';
 import 'regenerator-runtime/runtime';
@@ -40,8 +42,21 @@ const controlSearchResults = async function () {
     // Делаем Ajax запрос рецептов с блюдом
     await model.loadSearchResults(dish);
 
-    resultsView.render(model.state.search.result);
-    resultsView.renderBtns();
+    // Отображаем список рецептов
+    resultsView.render(model.getSearchDataPart(1));
+    // Отображаем нумерацию страниц под рецептами
+    paginationView.render(model.state.search);
+  } catch (err) {
+    resultsView.renderError();
+  }
+};
+
+const controlPagination = function () {
+  try {
+    // Отображаем список рецептов
+    resultsView.render(model.getSearchDataPart(model.state.search.currentPage));
+    // Отображаем нумерацию страниц под рецептами
+    paginationView.render(model.state.search);
   } catch (err) {
     resultsView.renderError();
   }
@@ -50,6 +65,7 @@ const controlSearchResults = async function () {
 const init = function () {
   recipeView.addHandlerRender(controlRecipe);
   searchView.addHandlerSearch(controlSearchResults);
+  paginationView.addHandlerPagination(controlPagination);
 };
 
 init();
