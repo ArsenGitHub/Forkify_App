@@ -18,6 +18,8 @@ export const loadSearchResults = async function (dish) {
   try {
     // Данные поиска
     state.search.result = [];
+    // Перезадаем страницу, чтобы при повторно поиске нумерация начиналась заного
+    state.search.currentPage = 1;
     // Сохраняем блюдо из поиска
     state.search.dish = dish;
     // Запрашиваем данные рецептов на основе блюда из инпута
@@ -63,10 +65,12 @@ export const loadRecipe = async function (recipeId) {
   }
 };
 
-// Ф-я деления данных на страницы, возвращает кол-во данных =
+// Ф-я для разделения данных по страницам
 export const getSearchDataPart = function (page = state.search.currentPage) {
+  // Сохраняем страницу в обьекте, которая будет приходить из UI
   state.search.currentPage = page;
 
+  // Возвращаем данные пришедшие из API по частям (зависит от какая страница + сколько элементов на одной странице)
   return state.search.result.slice(
     (state.search.currentPage - 1) * state.search.itemsPerPage,
     state.search.currentPage * state.search.itemsPerPage

@@ -613,6 +613,7 @@ const controlRecipe = async function() {
         (0, _recipeViewJsDefault.default).renderError();
     }
 };
+// Управляет запросом рецептов через поиск и отображением списка рецептов с пагинацией
 const controlSearchResults = async function() {
     try {
         // Получаем блюдо из инпута введенное в поиск
@@ -621,23 +622,20 @@ const controlSearchResults = async function() {
         (0, _resultsViewJsDefault.default).renderSpinner();
         // Делаем Ajax запрос рецептов с блюдом
         await _modelJs.loadSearchResults(dish);
-        // Отображаем список рецептов
-        (0, _resultsViewJsDefault.default).render(_modelJs.getSearchDataPart(1));
-        // Отображаем нумерацию страниц под рецептами
+        // Отображаем список рецептов из части данных помещающихся на одну страницу
+        (0, _resultsViewJsDefault.default).render(_modelJs.getSearchDataPart());
+        // Отображаем начальную пагинацию под рецептами
         (0, _paginationViewJsDefault.default).render(_modelJs.state.search);
     } catch (err) {
         (0, _resultsViewJsDefault.default).renderError();
     }
 };
-const controlPagination = function() {
-    try {
-        // Отображаем список рецептов
-        (0, _resultsViewJsDefault.default).render(_modelJs.getSearchDataPart(_modelJs.state.search.currentPage));
-        // Отображаем нумерацию страниц под рецептами
-        (0, _paginationViewJsDefault.default).render(_modelJs.state.search);
-    } catch (err) {
-        (0, _resultsViewJsDefault.default).renderError();
-    }
+// Управляет "перелистыванием" страниц списка рецептов
+const controlPagination = function(page) {
+    // Отображаем пред/след страницу списка рецептов
+    (0, _resultsViewJsDefault.default).render(_modelJs.getSearchDataPart(page));
+    // Отображаем новую нумерацию страниц под рецептами
+    (0, _paginationViewJsDefault.default).render(_modelJs.state.search);
 };
 const init = function() {
     (0, _recipeViewJsDefault.default).addHandlerRender(controlRecipe);
@@ -1900,6 +1898,8 @@ const loadSearchResults = async function(dish) {
     try {
         // Данные поиска
         state.search.result = [];
+        // Перезадаем страницу, чтобы при повторно поиске нумерация начиналась заного
+        state.search.currentPage = 1;
         // Сохраняем блюдо из поиска
         state.search.dish = dish;
         // Запрашиваем данные рецептов на основе блюда из инпута
@@ -1937,7 +1937,9 @@ const loadRecipe = async function(recipeId) {
     }
 };
 const getSearchDataPart = function(page = state.search.currentPage) {
+    // Сохраняем страницу в обьекте, которая будет приходить из UI
     state.search.currentPage = page;
+    // Возвращаем данные пришедшие из API по частям (зависит от какая страница + сколько элементов на одной странице)
     return state.search.result.slice((state.search.currentPage - 1) * state.search.itemsPerPage, state.search.currentPage * state.search.itemsPerPage);
 };
 
@@ -3110,7 +3112,6 @@ class resultsView extends (0, _view.View) {
     // Родительский блок, куда вставляется верстка рецепта
     _parentEl = document.querySelector(".results");
     _createHtml() {
-        console.log(this._data);
         return this._data.reduce((acc, recipe)=>{
             const card = `
         <li class="preview">
@@ -3140,37 +3141,40 @@ var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
 var _view = require("./View");
 class PaginationView extends (0, _view.View) {
     _parentEl = document.querySelector(".pagination");
-    // // Pagination
-    // #itemsPerPage = this._data.itemsPerPage;
-    // #currentPage = this._data.currentPage;
+    // Возвращает верстку кнопок "предыдущая"/"следующая" страница
     _createHtml() {
         const btnPrev = `
-      <button class="btn--inline pagination__btn--prev">
+      <button data-goto="${this._data.currentPage - 1}" class="btn--inline pagination__btn--prev">
           <svg class="search__icon">
               <use href="${(0, _iconsSvgDefault.default)}#icon-arrow-left"></use>
           </svg>
           <span>Page ${this._data.currentPage - 1}</span>
       </button>`;
         const btnNext = `
-      <button class="btn--inline pagination__btn--next">
+      <button data-goto="${this._data.currentPage + 1}" class="btn--inline pagination__btn--next">
         <span>Page ${this._data.currentPage + 1}</span>
-        <svg class="search__icon">
+         <svg class="search__icon">
             <use href="${(0, _iconsSvgDefault.default)}#icon-arrow-right"></use>
         </svg>
       </button>`;
+        //Если данных всего на одну страницу, то кнопки не отобразятся
+        if (!(this._data.totalPages - 1)) return "";
+        // Если тек-я стр 1 и кол-во данных больше, чем на одну страницу, то возвращаем только кнопку "следующий"
         if (this._data.currentPage === 1 && this._data.totalPages > 1) return btnNext;
-        if (this._data.totalPages < this._data.currentPage + 1) return btnPrev;
-        if (!(this._data.totalPages - 1)) return;
+        // Если текущая страница === общему кол-ву страниц, то возвращаем только кнопку "предыдущий"
+        if (this._data.totalPages === this._data.currentPage) return btnPrev;
+        // Иначе возвращаем обе кнопки
         return btnPrev + btnNext;
     }
+    // Привязываем прослушиватель к общему родителю кнопок(делегирование)Publisher-Subscriber Pattern
     addHandlerPagination(handler) {
         this._parentEl.addEventListener("click", (function(e) {
-            const prevBtn = e.target.closest(".pagination__btn--prev");
-            const nextBtn = e.target.closest(".pagination__btn--next");
-            if (!prevBtn && !nextBtn) return;
-            if (prevBtn) this._data.currentPage--;
-            if (nextBtn) this._data.currentPage++;
-            handler();
+            const btn = e.target.closest(".btn--inline");
+            // Если клик не по кнопкам и его потомка, а по самому контейнеру(общий родитель)
+            if (!btn) return;
+            // При клике на кнопку получаем значение его дата-атрибута, которая = либо следующей странице, либо предыдушей
+            const goToNum = +btn.dataset.goto;
+            handler(goToNum);
         }).bind(this));
     }
 }

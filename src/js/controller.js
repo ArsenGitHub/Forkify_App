@@ -31,6 +31,7 @@ const controlRecipe = async function () {
   }
 };
 
+// Управляет запросом рецептов через поиск и отображением списка рецептов с пагинацией
 const controlSearchResults = async function () {
   try {
     // Получаем блюдо из инпута введенное в поиск
@@ -42,24 +43,21 @@ const controlSearchResults = async function () {
     // Делаем Ajax запрос рецептов с блюдом
     await model.loadSearchResults(dish);
 
-    // Отображаем список рецептов
-    resultsView.render(model.getSearchDataPart(1));
-    // Отображаем нумерацию страниц под рецептами
+    // Отображаем список рецептов из части данных помещающихся на одну страницу
+    resultsView.render(model.getSearchDataPart());
+    // Отображаем начальную пагинацию под рецептами
     paginationView.render(model.state.search);
   } catch (err) {
     resultsView.renderError();
   }
 };
 
-const controlPagination = function () {
-  try {
-    // Отображаем список рецептов
-    resultsView.render(model.getSearchDataPart(model.state.search.currentPage));
-    // Отображаем нумерацию страниц под рецептами
-    paginationView.render(model.state.search);
-  } catch (err) {
-    resultsView.renderError();
-  }
+// Управляет "перелистыванием" страниц списка рецептов
+const controlPagination = function (page) {
+  // Отображаем пред/след страницу списка рецептов
+  resultsView.render(model.getSearchDataPart(page));
+  // Отображаем новую нумерацию страниц под рецептами
+  paginationView.render(model.state.search);
 };
 
 const init = function () {
@@ -67,5 +65,4 @@ const init = function () {
   searchView.addHandlerSearch(controlSearchResults);
   paginationView.addHandlerPagination(controlPagination);
 };
-
 init();
