@@ -6,7 +6,7 @@ import icons from 'url:../../img/icons.svg';
 // Библиотека(десятичные => дробные для рецепта)
 import { Fraction } from 'fractional';
 
-// Класс с функционалом отображения
+// Класс с функционалом отображения рецепта
 class RecipeView extends View {
   // Родительский блок, куда вставляется верстка рецепта
   _parentEl = document.querySelector('.recipe');
@@ -43,12 +43,16 @@ class RecipeView extends View {
           <span class="recipe__info-text">servings</span>
 
           <div class="recipe__info-buttons">
-            <button class="btn--tiny btn--increase-servings">
+            <button data-update-servings="${
+              this._data.servings - 1
+            }" class="btn--tiny btn--increase-servings">
               <svg>
                 <use href="${icons}#icon-minus-circle"></use>
               </svg>
             </button>
-            <button class="btn--tiny btn--increase-servings">
+            <button data-update-servings="${
+              this._data.servings + 1
+            }" class="btn--tiny btn--increase-servings">
               <svg>
                 <use href="${icons}#icon-plus-circle"></use>
               </svg>
@@ -112,10 +116,22 @@ class RecipeView extends View {
     `;
   }
 
-  // Publisher-Subscriber Pattern
+  // Прослушиватель для отображения рецепта (Publisher-Subscriber Pattern)
   addHandlerRender(handler) {
     ['load', 'hashchange'].forEach((ev) => {
       window.addEventListener(ev, handler);
+    });
+  }
+
+  // Прослушиватель, для изменения кол-ва порций (Publisher-Subscriber Pattern)
+  addHandlerServings(handler) {
+    this._parentEl.addEventListener('click', function (e) {
+      const servingsBtn = e.target.closest('.btn--increase-servings');
+
+      if (!servingsBtn) return;
+
+      const servings = +servingsBtn.dataset.updateServings;
+      if (servings) handler(servings);
     });
   }
 }

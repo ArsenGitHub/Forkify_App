@@ -8,6 +8,8 @@ import searchView from './views/searchView.js';
 import resultsView from './views/resultsView.js';
 // Экземпляр(instance) класса PaginationView(default import)
 import paginationView from './views/paginationView.js';
+// Экземпляр(instance) класса ServingsView(default import)
+import servingsView from './views/servingsView.js';
 // Полифилы
 import 'core-js/stable';
 import 'regenerator-runtime/runtime';
@@ -60,8 +62,15 @@ const controlPagination = function (page) {
   paginationView.render(model.state.search);
 };
 
+// Управляет изменением порций,ингредиентов и обновлением в UI рецептом
+const controlServings = function (newServings) {
+  model.changeServings(newServings);
+  recipeView.render(model.state.recipe);
+};
+
 const init = function () {
   recipeView.addHandlerRender(controlRecipe);
+  recipeView.addHandlerServings(controlServings);
   searchView.addHandlerSearch(controlSearchResults);
   paginationView.addHandlerPagination(controlPagination);
 };

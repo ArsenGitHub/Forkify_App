@@ -595,6 +595,9 @@ var _resultsViewJsDefault = parcelHelpers.interopDefault(_resultsViewJs);
 // Экземпляр(instance) класса PaginationView(default import)
 var _paginationViewJs = require("./views/paginationView.js");
 var _paginationViewJsDefault = parcelHelpers.interopDefault(_paginationViewJs);
+// Экземпляр(instance) класса ServingsView(default import)
+var _servingsViewJs = require("./views/servingsView.js");
+var _servingsViewJsDefault = parcelHelpers.interopDefault(_servingsViewJs);
 var _runtime = require("regenerator-runtime/runtime");
 // Управляет запросом данных в модели и отображением всего в представлении
 const controlRecipe = async function() {
@@ -637,14 +640,20 @@ const controlPagination = function(page) {
     // Отображаем новую нумерацию страниц под рецептами
     (0, _paginationViewJsDefault.default).render(_modelJs.state.search);
 };
+// Управляет изменением порций,ингредиентов и обновлением в UI рецептом
+const controlServings = function(newServings) {
+    _modelJs.changeServings(newServings);
+    (0, _recipeViewJsDefault.default).render(_modelJs.state.recipe);
+};
 const init = function() {
     (0, _recipeViewJsDefault.default).addHandlerRender(controlRecipe);
+    (0, _recipeViewJsDefault.default).addHandlerServings(controlServings);
     (0, _searchViewJsDefault.default).addHandlerSearch(controlSearchResults);
     (0, _paginationViewJsDefault.default).addHandlerPagination(controlPagination);
 };
 init();
 
-},{"core-js/modules/web.immediate.js":"49tUX","./model.js":"Y4A21","./views/recipeView.js":"l60JC","regenerator-runtime/runtime":"dXNgZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./views/searchView.js":"9OQAM","./views/resultsView.js":"cSbZE","./views/paginationView.js":"6z7bi"}],"49tUX":[function(require,module,exports) {
+},{"core-js/modules/web.immediate.js":"49tUX","./model.js":"Y4A21","./views/recipeView.js":"l60JC","regenerator-runtime/runtime":"dXNgZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./views/searchView.js":"9OQAM","./views/resultsView.js":"cSbZE","./views/paginationView.js":"6z7bi","./views/servingsView.js":"0343m"}],"49tUX":[function(require,module,exports) {
 "use strict";
 // TODO: Remove this module from `core-js@4` since it's split to modules listed below
 require("52e9b3eefbbce1ed");
@@ -1884,6 +1893,7 @@ parcelHelpers.export(exports, "state", ()=>state);
 parcelHelpers.export(exports, "loadSearchResults", ()=>loadSearchResults);
 parcelHelpers.export(exports, "loadRecipe", ()=>loadRecipe);
 parcelHelpers.export(exports, "getSearchDataPart", ()=>getSearchDataPart);
+parcelHelpers.export(exports, "changeServings", ()=>changeServings);
 var _config = require("./config");
 // Fetch helper
 var _helpers = require("./helpers");
@@ -1941,6 +1951,12 @@ const getSearchDataPart = function(page = state.search.currentPage) {
     state.search.currentPage = page;
     // Возвращаем данные пришедшие из API по частям (зависит от какая страница + сколько элементов на одной странице)
     return state.search.result.slice((state.search.currentPage - 1) * state.search.itemsPerPage, state.search.currentPage * state.search.itemsPerPage);
+};
+const changeServings = function(newServings) {
+    state.recipe.ingredients.forEach((ingr)=>{
+        ingr.quantity = ingr.quantity ? ingr.quantity / state.recipe.servings * newServings : "";
+    });
+    state.recipe.servings = newServings;
 };
 
 },{"./config":"k5Hzs","./helpers":"hGI1E","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"k5Hzs":[function(require,module,exports) {
@@ -2022,7 +2038,7 @@ var _iconsSvg = require("url:../../img/icons.svg");
 var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
 // Библиотека(десятичные => дробные для рецепта)
 var _fractional = require("fractional");
-// Класс с функционалом отображения
+// Класс с функционалом отображения рецепта
 class RecipeView extends (0, _view.View) {
     // Родительский блок, куда вставляется верстка рецепта
     _parentEl = document.querySelector(".recipe");
@@ -2052,12 +2068,12 @@ class RecipeView extends (0, _view.View) {
           <span class="recipe__info-text">servings</span>
 
           <div class="recipe__info-buttons">
-            <button class="btn--tiny btn--increase-servings">
+            <button data-update-servings="${this._data.servings - 1}" class="btn--tiny btn--increase-servings">
               <svg>
                 <use href="${0, _iconsSvgDefault.default}#icon-minus-circle"></use>
               </svg>
             </button>
-            <button class="btn--tiny btn--increase-servings">
+            <button data-update-servings="${this._data.servings + 1}" class="btn--tiny btn--increase-servings">
               <svg>
                 <use href="${0, _iconsSvgDefault.default}#icon-plus-circle"></use>
               </svg>
@@ -2118,13 +2134,22 @@ class RecipeView extends (0, _view.View) {
       </div>
     `;
     }
-    // Publisher-Subscriber Pattern
+    // Прослушиватель для отображения рецепта (Publisher-Subscriber Pattern)
     addHandlerRender(handler) {
         [
             "load",
             "hashchange"
         ].forEach((ev)=>{
             window.addEventListener(ev, handler);
+        });
+    }
+    // Прослушиватель, для изменения кол-ва порций (Publisher-Subscriber Pattern)
+    addHandlerServings(handler) {
+        this._parentEl.addEventListener("click", function(e) {
+            const servingsBtn = e.target.closest(".btn--increase-servings");
+            if (!servingsBtn) return;
+            const servings = +servingsBtn.dataset.updateServings;
+            if (servings) handler(servings);
         });
     }
 }
@@ -3166,7 +3191,7 @@ class PaginationView extends (0, _view.View) {
         // Иначе возвращаем обе кнопки
         return btnPrev + btnNext;
     }
-    // Привязываем прослушиватель к общему родителю кнопок(делегирование)Publisher-Subscriber Pattern
+    // Привязываем прослушиватель к общему родителю кнопок перелистывания списка рецептов(делегирование)Publisher-Subscriber Pattern
     addHandlerPagination(handler) {
         this._parentEl.addEventListener("click", (function(e) {
             const btn = e.target.closest(".btn--inline");
@@ -3180,6 +3205,21 @@ class PaginationView extends (0, _view.View) {
 }
 exports.default = new PaginationView();
 
-},{"url:../../img/icons.svg":"loVOp","./View":"5cUXS","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["f0HGD","aenu9"], "aenu9", "parcelRequire3a11")
+},{"url:../../img/icons.svg":"loVOp","./View":"5cUXS","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"0343m":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+class SevingsView {
+    _parentEl = document.querySelector(".recipe__info-buttons");
+    addHandlersevings(handler) {
+        get;
+        this._parentEl.addEventListener("click", function() {
+            const servingsAmount = document.querySelector(".recipe__info-data--people").textContent;
+            handler(servingsAmount);
+        });
+    }
+}
+exports.default = new SevingsView();
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["f0HGD","aenu9"], "aenu9", "parcelRequire3a11")
 
 //# sourceMappingURL=index.e37f48ea.js.map

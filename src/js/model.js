@@ -76,3 +76,13 @@ export const getSearchDataPart = function (page = state.search.currentPage) {
     state.search.currentPage * state.search.itemsPerPage
   );
 };
+
+// Ф-я изменения порций и кол-ва ингредиентов
+export const changeServings = function (newServings) {
+  state.recipe.ingredients.forEach((ingr) => {
+    ingr.quantity = ingr.quantity
+      ? (ingr.quantity / state.recipe.servings) * newServings
+      : '';
+  });
+  state.recipe.servings = newServings;
+};

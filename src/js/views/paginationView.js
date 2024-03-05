@@ -40,7 +40,7 @@ class PaginationView extends View {
     return btnPrev + btnNext;
   }
 
-  // Привязываем прослушиватель к общему родителю кнопок(делегирование)Publisher-Subscriber Pattern
+  // Привязываем прослушиватель к общему родителю кнопок перелистывания списка рецептов(делегирование)Publisher-Subscriber Pattern
   addHandlerPagination(handler) {
     this._parentEl.addEventListener(
       'click',
