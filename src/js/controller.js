@@ -8,19 +8,20 @@ import searchView from './views/searchView.js';
 import resultsView from './views/resultsView.js';
 // Экземпляр(instance) класса PaginationView(default import)
 import paginationView from './views/paginationView.js';
-// Экземпляр(instance) класса ServingsView(default import)
-import servingsView from './views/servingsView.js';
+
 // Полифилы
 import 'core-js/stable';
 import 'regenerator-runtime/runtime';
 
-// Управляет запросом данных в модели и отображением всего в представлении
+// Управляет запросом данных в модели и отображением рецепта в представлении
 const controlRecipe = async function () {
   try {
     // Получаем хэш
     const recipeId = window.location.hash.slice(1);
     if (!recipeId) return;
 
+    // Обновляем элемент списка(чтобы выделить активный рецепт в списке)
+    resultsView.update(model.getSearchDataPart());
     // Отображаем спинер
     recipeView.renderSpinner();
     // Делаем Ajax запрос рецепта
@@ -64,8 +65,11 @@ const controlPagination = function (page) {
 
 // Управляет изменением порций,ингредиентов и обновлением в UI рецептом
 const controlServings = function (newServings) {
+  // Меняет кол-во порций  и кол-во каждого ингредиента
   model.changeServings(newServings);
-  recipeView.render(model.state.recipe);
+  // Обновляем UI(рецепт)
+  // recipeView.render(model.state.recipe);
+  recipeView.update(model.state.recipe);
 };
 
 const init = function () {

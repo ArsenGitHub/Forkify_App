@@ -5,11 +5,16 @@ class resultsView extends View {
   // Родительский блок, куда вставляется верстка рецепта
   _parentEl = document.querySelector('.results');
 
-  _createHtml() {
+  _createMarkup() {
+    // Получаем хэш
+    const currRecipeId = window.location.hash.slice(1);
+
     return this._data.reduce((acc, recipe) => {
       const card = `
         <li class="preview">
-          <a class="preview__link preview__link" href="#${recipe.id}">
+          <a class="preview__link preview__link ${
+            currRecipeId === recipe.id ? 'preview__link--active' : ''
+          }" href="#${recipe.id}">
             <figure class="preview__fig">
               <img src="${recipe.imageUrl}" alt="${recipe.title}"/>
             </figure>

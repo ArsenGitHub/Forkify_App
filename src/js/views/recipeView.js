@@ -12,7 +12,7 @@ class RecipeView extends View {
   _parentEl = document.querySelector('.recipe');
 
   // Возвращает верстку блока рецепта
-  _createHtml() {
+  _createMarkup() {
     return `
       <figure class="recipe__fig">
         <img src="${this._data.imageUrl}" alt="${
@@ -130,6 +130,7 @@ class RecipeView extends View {
 
       if (!servingsBtn) return;
 
+      // Кол-во порции
       const servings = +servingsBtn.dataset.updateServings;
       if (servings) handler(servings);
     });

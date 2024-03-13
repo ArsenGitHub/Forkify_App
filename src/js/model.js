@@ -79,10 +79,12 @@ export const getSearchDataPart = function (page = state.search.currentPage) {
 
 // Ф-я изменения порций и кол-ва ингредиентов
 export const changeServings = function (newServings) {
+  // Меняем кол-во каждого ингредиента
   state.recipe.ingredients.forEach((ingr) => {
     ingr.quantity = ingr.quantity
       ? (ingr.quantity / state.recipe.servings) * newServings
       : '';
   });
+  // Меняем количество порции в обьекте
   state.recipe.servings = newServings;
 };

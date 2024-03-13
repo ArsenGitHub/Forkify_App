@@ -595,16 +595,15 @@ var _resultsViewJsDefault = parcelHelpers.interopDefault(_resultsViewJs);
 // Экземпляр(instance) класса PaginationView(default import)
 var _paginationViewJs = require("./views/paginationView.js");
 var _paginationViewJsDefault = parcelHelpers.interopDefault(_paginationViewJs);
-// Экземпляр(instance) класса ServingsView(default import)
-var _servingsViewJs = require("./views/servingsView.js");
-var _servingsViewJsDefault = parcelHelpers.interopDefault(_servingsViewJs);
 var _runtime = require("regenerator-runtime/runtime");
-// Управляет запросом данных в модели и отображением всего в представлении
+// Управляет запросом данных в модели и отображением рецепта в представлении
 const controlRecipe = async function() {
     try {
         // Получаем хэш
         const recipeId = window.location.hash.slice(1);
         if (!recipeId) return;
+        // Обновляем элемент списка(чтобы выделить активный рецепт в списке)
+        (0, _resultsViewJsDefault.default).update(_modelJs.getSearchDataPart());
         // Отображаем спинер
         (0, _recipeViewJsDefault.default).renderSpinner();
         // Делаем Ajax запрос рецепта
@@ -642,8 +641,11 @@ const controlPagination = function(page) {
 };
 // Управляет изменением порций,ингредиентов и обновлением в UI рецептом
 const controlServings = function(newServings) {
+    // Меняет кол-во порций  и кол-во каждого ингредиента
     _modelJs.changeServings(newServings);
-    (0, _recipeViewJsDefault.default).render(_modelJs.state.recipe);
+    // Обновляем UI(рецепт)
+    // recipeView.render(model.state.recipe);
+    (0, _recipeViewJsDefault.default).update(_modelJs.state.recipe);
 };
 const init = function() {
     (0, _recipeViewJsDefault.default).addHandlerRender(controlRecipe);
@@ -653,7 +655,7 @@ const init = function() {
 };
 init();
 
-},{"core-js/modules/web.immediate.js":"49tUX","./model.js":"Y4A21","./views/recipeView.js":"l60JC","regenerator-runtime/runtime":"dXNgZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./views/searchView.js":"9OQAM","./views/resultsView.js":"cSbZE","./views/paginationView.js":"6z7bi","./views/servingsView.js":"0343m"}],"49tUX":[function(require,module,exports) {
+},{"core-js/modules/web.immediate.js":"49tUX","./model.js":"Y4A21","./views/recipeView.js":"l60JC","regenerator-runtime/runtime":"dXNgZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./views/searchView.js":"9OQAM","./views/resultsView.js":"cSbZE","./views/paginationView.js":"6z7bi"}],"49tUX":[function(require,module,exports) {
 "use strict";
 // TODO: Remove this module from `core-js@4` since it's split to modules listed below
 require("52e9b3eefbbce1ed");
@@ -1953,9 +1955,11 @@ const getSearchDataPart = function(page = state.search.currentPage) {
     return state.search.result.slice((state.search.currentPage - 1) * state.search.itemsPerPage, state.search.currentPage * state.search.itemsPerPage);
 };
 const changeServings = function(newServings) {
+    // Меняем кол-во каждого ингредиента
     state.recipe.ingredients.forEach((ingr)=>{
         ingr.quantity = ingr.quantity ? ingr.quantity / state.recipe.servings * newServings : "";
     });
+    // Меняем количество порции в обьекте
     state.recipe.servings = newServings;
 };
 
@@ -2043,7 +2047,7 @@ class RecipeView extends (0, _view.View) {
     // Родительский блок, куда вставляется верстка рецепта
     _parentEl = document.querySelector(".recipe");
     // Возвращает верстку блока рецепта
-    _createHtml() {
+    _createMarkup() {
         return `
       <figure class="recipe__fig">
         <img src="${this._data.imageUrl}" alt="${this._data.title}" class="recipe__img" />
@@ -2148,6 +2152,7 @@ class RecipeView extends (0, _view.View) {
         this._parentEl.addEventListener("click", function(e) {
             const servingsBtn = e.target.closest(".btn--increase-servings");
             if (!servingsBtn) return;
+            // Кол-во порции
             const servings = +servingsBtn.dataset.updateServings;
             if (servings) handler(servings);
         });
@@ -2166,28 +2171,53 @@ class View {
     _data;
     _errorMessage = "Can not find recipe. Try another one!";
     _succesMessage = "Success";
-    // Отображение рецепта(Public API)
+    // Отображение данных в UI
     render(data) {
         // Проверяем, что пришедший массив от API не пустой(при ошибке ввода имени рецепта)
         if (Array.isArray(data) && !data.length) return this.renderError();
         this._data = data;
-        const html = this._createHtml();
-        this._clearAndInsert(html);
+        const markup = this._createMarkup();
+        this._clearAndInsert(markup);
+    }
+    // Обновление только измененной части UI(при взаимодействии пользователя)
+    update(data) {
+        // Переназначаем текущие данные на измененные данные
+        this._data = data;
+        // Создаем новую верстку из измененных данных
+        const newMarkup = this._createMarkup();
+        // Преобразует строку в фрагмент document (в узлы(node))
+        const newDOM = document.createRange().createContextualFragment(newMarkup);
+        // Новые узлы верстки
+        const newElements = Array.from(newDOM.querySelectorAll("*"));
+        // Старые узлы верстки
+        const currentElements = Array.from(this._parentEl.querySelectorAll("*"));
+        newElements.forEach((newEl, i)=>{
+            // Узел "старой" верстки
+            const curEl = currentElements[i];
+            // Если новый узел !== старому узлу и его дочерний узел текст(text node)
+            if (!newEl.isEqualNode(curEl) && newEl.firstChild?.nodeValue.trim()) // Меняем содержимые отличающихся текстов
+            curEl.textContent = newEl.textContent;
+            // Если новый узел !== старому узлу
+            if (!newEl.isEqualNode(curEl)) Array.from(newEl.attributes).forEach((el)=>{
+                // Заменяем "старый" дата-атрибут на новый
+                curEl.setAttribute(el.name, el.value);
+            });
+        });
     }
     // Отображение спинера загрузки
     renderSpinner() {
-        const html = `
+        const markup = `
       <div class="spinner">
         <svg>
           <use href="${(0, _iconsSvgDefault.default)}#icon-loader"></use>
         </svg>
       </div>
     `;
-        this._clearAndInsert(html);
+        this._clearAndInsert(markup);
     }
     // Отображение блока с ошибкой
     renderError(err = this._errorMessage) {
-        const html = `
+        const markup = `
     <div class="error">
       <div>
         <svg>
@@ -2197,11 +2227,11 @@ class View {
       <p>${err}</p>
     </div>
         `;
-        this._clearAndInsert(html);
+        this._clearAndInsert(markup);
     }
     // Отображение блока с сообщением о удачной попытке чего-либо
     renderSuccess(message = this._succesMessage) {
-        const html = `
+        const markup = `
       <div class="message">
         <div>
             <svg>
@@ -2211,12 +2241,12 @@ class View {
         <p>${message}</p>
       </div>
         `;
-        this._clearAndInsert(html);
+        this._clearAndInsert(markup);
     }
     //Очистка родительского блока(верстки) и вставка новой верстки
-    _clearAndInsert(html) {
+    _clearAndInsert(markup) {
         this._parentEl.innerHTML = "";
-        this._parentEl.insertAdjacentHTML("beforeend", html);
+        this._parentEl.insertAdjacentHTML("beforeend", markup);
     }
 }
 
@@ -3136,11 +3166,13 @@ var _view = require("./View");
 class resultsView extends (0, _view.View) {
     // Родительский блок, куда вставляется верстка рецепта
     _parentEl = document.querySelector(".results");
-    _createHtml() {
+    _createMarkup() {
+        // Получаем хэш
+        const currRecipeId = window.location.hash.slice(1);
         return this._data.reduce((acc, recipe)=>{
             const card = `
         <li class="preview">
-          <a class="preview__link preview__link" href="#${recipe.id}">
+          <a class="preview__link preview__link ${currRecipeId === recipe.id ? "preview__link--active" : ""}" href="#${recipe.id}">
             <figure class="preview__fig">
               <img src="${recipe.imageUrl}" alt="${recipe.title}"/>
             </figure>
@@ -3167,7 +3199,7 @@ var _view = require("./View");
 class PaginationView extends (0, _view.View) {
     _parentEl = document.querySelector(".pagination");
     // Возвращает верстку кнопок "предыдущая"/"следующая" страница
-    _createHtml() {
+    _createMarkup() {
         const btnPrev = `
       <button data-goto="${this._data.currentPage - 1}" class="btn--inline pagination__btn--prev">
           <svg class="search__icon">
@@ -3195,9 +3227,8 @@ class PaginationView extends (0, _view.View) {
     addHandlerPagination(handler) {
         this._parentEl.addEventListener("click", (function(e) {
             const btn = e.target.closest(".btn--inline");
-            // Если клик не по кнопкам и его потомка, а по самому контейнеру(общий родитель)
             if (!btn) return;
-            // При клике на кнопку получаем значение его дата-атрибута, которая = либо следующей странице, либо предыдушей
+            // Значение = либо следующей странице, либо предыдушей
             const goToNum = +btn.dataset.goto;
             handler(goToNum);
         }).bind(this));
@@ -3205,21 +3236,6 @@ class PaginationView extends (0, _view.View) {
 }
 exports.default = new PaginationView();
 
-},{"url:../../img/icons.svg":"loVOp","./View":"5cUXS","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"0343m":[function(require,module,exports) {
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-class SevingsView {
-    _parentEl = document.querySelector(".recipe__info-buttons");
-    addHandlersevings(handler) {
-        get;
-        this._parentEl.addEventListener("click", function() {
-            const servingsAmount = document.querySelector(".recipe__info-data--people").textContent;
-            handler(servingsAmount);
-        });
-    }
-}
-exports.default = new SevingsView();
-
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["f0HGD","aenu9"], "aenu9", "parcelRequire3a11")
+},{"url:../../img/icons.svg":"loVOp","./View":"5cUXS","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["f0HGD","aenu9"], "aenu9", "parcelRequire3a11")
 
 //# sourceMappingURL=index.e37f48ea.js.map

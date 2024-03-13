@@ -7,7 +7,7 @@ class PaginationView extends View {
   _parentEl = document.querySelector('.pagination');
 
   // Возвращает верстку кнопок "предыдущая"/"следующая" страница
-  _createHtml() {
+  _createMarkup() {
     const btnPrev = `
       <button data-goto="${
         this._data.currentPage - 1
@@ -46,9 +46,9 @@ class PaginationView extends View {
       'click',
       function (e) {
         const btn = e.target.closest('.btn--inline');
-        // Если клик не по кнопкам и его потомка, а по самому контейнеру(общий родитель)
+
         if (!btn) return;
-        // При клике на кнопку получаем значение его дата-атрибута, которая = либо следующей странице, либо предыдушей
+        // Значение = либо следующей странице, либо предыдушей
         const goToNum = +btn.dataset.goto;
 
         handler(goToNum);
