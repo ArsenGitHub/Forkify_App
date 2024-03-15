@@ -8,17 +8,16 @@ import { ITEMS_PER_PAGE } from './config';
 export const state = {
   recipe: {},
   search: {
-    currentPage: 1,
+    results: [],
     itemsPerPage: ITEMS_PER_PAGE,
   },
+  bookmarks: [],
 };
 
 // Запрос рецептов по поиску
 export const loadSearchResults = async function (dish) {
   try {
-    // Данные поиска
-    state.search.result = [];
-    // Перезадаем страницу, чтобы при повторно поиске нумерация начиналась заного
+    // Задаем страницу здесь, чтобы при повторном поиске(запросе данных) нумерация начиналась заного
     state.search.currentPage = 1;
     // Сохраняем блюдо из поиска
     state.search.dish = dish;
@@ -31,13 +30,13 @@ export const loadSearchResults = async function (dish) {
       data.data.recipes.length / state.search.itemsPerPage
     );
 
-    data.data.recipes.forEach((recipe) => {
-      state.search.result.push({
+    state.search.results = data.data.recipes.map((recipe) => {
+      return {
         id: recipe.id,
         imageUrl: recipe.image_url,
         publisher: recipe.publisher,
         title: recipe.title,
-      });
+      };
     });
   } catch (err) {
     throw err;
@@ -60,6 +59,11 @@ export const loadRecipe = async function (recipeId) {
       sourceUrl: recipe.source_url,
       title: recipe.title,
     };
+
+    // Есть ли рецепт в закладках
+    state.recipe.bookmarked = state.bookmarks.some(
+      (bookmarkedRecipe) => bookmarkedRecipe.id === recipeId
+    );
   } catch (err) {
     throw err;
   }
@@ -70,8 +74,8 @@ export const getSearchDataPart = function (page = state.search.currentPage) {
   // Сохраняем страницу в обьекте, которая будет приходить из UI
   state.search.currentPage = page;
 
-  // Возвращаем данные пришедшие из API по частям (зависит от какая страница + сколько элементов на одной странице)
-  return state.search.result.slice(
+  // Возвращаем данные пришедшие из API по частям для разделения на страницы
+  return state.search.results.slice(
     (state.search.currentPage - 1) * state.search.itemsPerPage,
     state.search.currentPage * state.search.itemsPerPage
   );
@@ -87,4 +91,21 @@ export const changeServings = function (newServings) {
   });
   // Меняем количество порции в обьекте
   state.recipe.servings = newServings;
+};
+
+//Ф-я для создания закладки на рецепте. Принимает рецепт и сохраняет его в state
+export const addBookmark = function (recipe) {
+  // Сохраняем рецепт в закладках
+  state.bookmarks.push(recipe);
+  state.recipe.bookmarked = true;
+};
+
+// Ф-я для удаления рецепта из закладок
+export const removeBookmark = function (recipeId) {
+  const bookmarksRecipeInd = state.bookmarks.findIndex(
+    (bookmarkedRecipe) => bookmarkedRecipe.id === recipeId
+  );
+  // Удаляем этот рецепт из массива "закладок"
+  state.bookmarks.splice(bookmarksRecipeInd, 1);
+  if (recipeId === state.recipe.id) state.recipe.bookmarked = false;
 };

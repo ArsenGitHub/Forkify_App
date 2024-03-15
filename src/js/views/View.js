@@ -1,6 +1,12 @@
 // SVG картинки рецептов
 import icons from 'url:../../img/icons.svg';
 
+const logo = document.querySelector('.header__logo');
+logo.addEventListener('click', function () {
+  window.location.hash = '';
+  window.location.reload();
+});
+
 export class View {
   _data;
   _errorMessage = 'Can not find recipe. Try another one!';

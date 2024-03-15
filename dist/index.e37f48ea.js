@@ -608,7 +608,7 @@ const controlRecipe = async function() {
         (0, _recipeViewJsDefault.default).renderSpinner();
         // Делаем Ajax запрос рецепта
         await _modelJs.loadRecipe(recipeId);
-        // Отображаем рецепт
+        // Отображаем полный рецепт
         (0, _recipeViewJsDefault.default).render(_modelJs.state.recipe);
     } catch (err) {
         // Отображаем ошибку в UI
@@ -644,12 +644,20 @@ const controlServings = function(newServings) {
     // Меняет кол-во порций  и кол-во каждого ингредиента
     _modelJs.changeServings(newServings);
     // Обновляем UI(рецепт)
-    // recipeView.render(model.state.recipe);
+    (0, _recipeViewJsDefault.default).update(_modelJs.state.recipe);
+};
+// Управляет закладками рецептов
+const controlBookmarks = function() {
+    // Если рецепт в "закладках", то удаляем его из "закладок". Иначе добавляем в закладки
+    if (_modelJs.state.recipe.bookmarked) _modelJs.removeBookmark(_modelJs.state.recipe.id);
+    else _modelJs.addBookmark(_modelJs.state.recipe);
+    // Обновляем UI
     (0, _recipeViewJsDefault.default).update(_modelJs.state.recipe);
 };
 const init = function() {
     (0, _recipeViewJsDefault.default).addHandlerRender(controlRecipe);
     (0, _recipeViewJsDefault.default).addHandlerServings(controlServings);
+    (0, _recipeViewJsDefault.default).addHandlerBookmark(controlBookmarks);
     (0, _searchViewJsDefault.default).addHandlerSearch(controlSearchResults);
     (0, _paginationViewJsDefault.default).addHandlerPagination(controlPagination);
 };
@@ -1896,21 +1904,22 @@ parcelHelpers.export(exports, "loadSearchResults", ()=>loadSearchResults);
 parcelHelpers.export(exports, "loadRecipe", ()=>loadRecipe);
 parcelHelpers.export(exports, "getSearchDataPart", ()=>getSearchDataPart);
 parcelHelpers.export(exports, "changeServings", ()=>changeServings);
+parcelHelpers.export(exports, "addBookmark", ()=>addBookmark);
+parcelHelpers.export(exports, "removeBookmark", ()=>removeBookmark);
 var _config = require("./config");
 // Fetch helper
 var _helpers = require("./helpers");
 const state = {
     recipe: {},
     search: {
-        currentPage: 1,
+        results: [],
         itemsPerPage: (0, _config.ITEMS_PER_PAGE)
-    }
+    },
+    bookmarks: []
 };
 const loadSearchResults = async function(dish) {
     try {
-        // Данные поиска
-        state.search.result = [];
-        // Перезадаем страницу, чтобы при повторно поиске нумерация начиналась заного
+        // Задаем страницу здесь, чтобы при повторном поиске(запросе данных) нумерация начиналась заного
         state.search.currentPage = 1;
         // Сохраняем блюдо из поиска
         state.search.dish = dish;
@@ -1918,13 +1927,13 @@ const loadSearchResults = async function(dish) {
         const data = await (0, _helpers.getData)(`${(0, _config.API_URL)}?search=${dish}&key=b8654b87-eb3f-4393-b226-d15907312864`);
         // Общее количество страниц необходимое для отображаения рецептов
         state.search.totalPages = Math.ceil(data.data.recipes.length / state.search.itemsPerPage);
-        data.data.recipes.forEach((recipe)=>{
-            state.search.result.push({
+        state.search.results = data.data.recipes.map((recipe)=>{
+            return {
                 id: recipe.id,
                 imageUrl: recipe.image_url,
                 publisher: recipe.publisher,
                 title: recipe.title
-            });
+            };
         });
     } catch (err) {
         throw err;
@@ -1944,6 +1953,8 @@ const loadRecipe = async function(recipeId) {
             sourceUrl: recipe.source_url,
             title: recipe.title
         };
+        // Есть ли рецепт в закладках
+        state.recipe.bookmarked = state.bookmarks.some((bookmarkedRecipe)=>bookmarkedRecipe.id === recipeId);
     } catch (err) {
         throw err;
     }
@@ -1951,8 +1962,8 @@ const loadRecipe = async function(recipeId) {
 const getSearchDataPart = function(page = state.search.currentPage) {
     // Сохраняем страницу в обьекте, которая будет приходить из UI
     state.search.currentPage = page;
-    // Возвращаем данные пришедшие из API по частям (зависит от какая страница + сколько элементов на одной странице)
-    return state.search.result.slice((state.search.currentPage - 1) * state.search.itemsPerPage, state.search.currentPage * state.search.itemsPerPage);
+    // Возвращаем данные пришедшие из API по частям для разделения на страницы
+    return state.search.results.slice((state.search.currentPage - 1) * state.search.itemsPerPage, state.search.currentPage * state.search.itemsPerPage);
 };
 const changeServings = function(newServings) {
     // Меняем кол-во каждого ингредиента
@@ -1961,6 +1972,17 @@ const changeServings = function(newServings) {
     });
     // Меняем количество порции в обьекте
     state.recipe.servings = newServings;
+};
+const addBookmark = function(recipe) {
+    // Сохраняем рецепт в закладках
+    state.bookmarks.push(recipe);
+    state.recipe.bookmarked = true;
+};
+const removeBookmark = function(recipeId) {
+    const bookmarksRecipeInd = state.bookmarks.findIndex((bookmarkedRecipe)=>bookmarkedRecipe.id === recipeId);
+    // Удаляем этот рецепт из массива "закладок"
+    state.bookmarks.splice(bookmarksRecipeInd, 1);
+    if (recipeId === state.recipe.id) state.recipe.bookmarked = false;
 };
 
 },{"./config":"k5Hzs","./helpers":"hGI1E","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"k5Hzs":[function(require,module,exports) {
@@ -2090,9 +2112,9 @@ class RecipeView extends (0, _view.View) {
             <use href="${0, _iconsSvgDefault.default}#icon-user"></use>
           </svg>
         </div>
-        <button class="btn--round">
+        <button class="btn--round btn--bookmark">
           <svg class="">
-            <use href="${0, _iconsSvgDefault.default}#icon-bookmark-fill"></use>
+            <use href="${0, _iconsSvgDefault.default}#icon-bookmark${this._data.bookmarked ? "-fill" : ""}"></use>
           </svg>
         </button>
       </div>
@@ -2157,6 +2179,14 @@ class RecipeView extends (0, _view.View) {
             if (servings) handler(servings);
         });
     }
+    // Прослушиватель, для добавления закладок рецептов (Publisher-Subscriber Pattern)
+    addHandlerBookmark(handler) {
+        this._parentEl.addEventListener("click", function(e) {
+            const bookmarkBtn = e.target.closest(".btn--bookmark");
+            if (!bookmarkBtn) return;
+            handler();
+        });
+    }
 }
 exports.default = new RecipeView();
 
@@ -2167,6 +2197,11 @@ parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "View", ()=>View);
 var _iconsSvg = require("url:../../img/icons.svg");
 var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
+const logo = document.querySelector(".header__logo");
+logo.addEventListener("click", function() {
+    window.location.hash = "";
+    window.location.reload();
+});
 class View {
     _data;
     _errorMessage = "Can not find recipe. Try another one!";
@@ -3129,11 +3164,6 @@ try {
 },{}],"9OQAM":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
-const logo = document.querySelector(".header__logo");
-logo.addEventListener("click", function() {
-    window.location.hash = "";
-    window.location.reload();
-});
 class SearchView {
     // Форма поиска
     _parentEl = document.querySelector(".search");

@@ -26,7 +26,7 @@ const controlRecipe = async function () {
     recipeView.renderSpinner();
     // Делаем Ajax запрос рецепта
     await model.loadRecipe(recipeId);
-    // Отображаем рецепт
+    // Отображаем полный рецепт
     recipeView.render(model.state.recipe);
   } catch (err) {
     // Отображаем ошибку в UI
@@ -68,13 +68,25 @@ const controlServings = function (newServings) {
   // Меняет кол-во порций  и кол-во каждого ингредиента
   model.changeServings(newServings);
   // Обновляем UI(рецепт)
-  // recipeView.render(model.state.recipe);
+  recipeView.update(model.state.recipe);
+};
+
+// Управляет закладками рецептов
+const controlBookmarks = function () {
+  // Если рецепт в "закладках", то удаляем его из "закладок". Иначе добавляем в закладки
+  if (model.state.recipe.bookmarked) {
+    model.removeBookmark(model.state.recipe.id);
+  } else {
+    model.addBookmark(model.state.recipe);
+  }
+  // Обновляем UI
   recipeView.update(model.state.recipe);
 };
 
 const init = function () {
   recipeView.addHandlerRender(controlRecipe);
   recipeView.addHandlerServings(controlServings);
+  recipeView.addHandlerBookmark(controlBookmarks);
   searchView.addHandlerSearch(controlSearchResults);
   paginationView.addHandlerPagination(controlPagination);
 };

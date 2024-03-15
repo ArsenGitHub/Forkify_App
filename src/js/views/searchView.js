@@ -1,9 +1,3 @@
-const logo = document.querySelector('.header__logo');
-logo.addEventListener('click', function () {
-  window.location.hash = '';
-  window.location.reload();
-});
-
 class SearchView {
   // Форма поиска
   _parentEl = document.querySelector('.search');
