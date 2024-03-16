@@ -8,6 +8,8 @@ import searchView from './views/searchView.js';
 import resultsView from './views/resultsView.js';
 // Экземпляр(instance) класса PaginationView(default import)
 import paginationView from './views/paginationView.js';
+// Экземпляр(instance) класса BookmarksnView(default import)
+import bookmarksView from './views/bookmarksView.js';
 
 // Полифилы
 import 'core-js/stable';
@@ -22,6 +24,8 @@ const controlRecipe = async function () {
 
     // Обновляем элемент списка(чтобы выделить активный рецепт в списке)
     resultsView.update(model.getSearchDataPart());
+    // Также обновляем элемент списка из закладок(чтобы выделить активный рецепт в списке)
+    bookmarksView.update(model.state.bookmarks);
     // Отображаем спинер
     recipeView.renderSpinner();
     // Делаем Ajax запрос рецепта
@@ -81,6 +85,8 @@ const controlBookmarks = function () {
   }
   // Обновляем UI
   recipeView.update(model.state.recipe);
+  // Отображаем рецепты из закладок в "закладках"
+  bookmarksView.render(model.state.bookmarks);
 };
 
 const init = function () {

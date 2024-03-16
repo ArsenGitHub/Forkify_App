@@ -595,6 +595,9 @@ var _resultsViewJsDefault = parcelHelpers.interopDefault(_resultsViewJs);
 // Экземпляр(instance) класса PaginationView(default import)
 var _paginationViewJs = require("./views/paginationView.js");
 var _paginationViewJsDefault = parcelHelpers.interopDefault(_paginationViewJs);
+// Экземпляр(instance) класса BookmarksnView(default import)
+var _bookmarksViewJs = require("./views/bookmarksView.js");
+var _bookmarksViewJsDefault = parcelHelpers.interopDefault(_bookmarksViewJs);
 var _runtime = require("regenerator-runtime/runtime");
 // Управляет запросом данных в модели и отображением рецепта в представлении
 const controlRecipe = async function() {
@@ -604,6 +607,8 @@ const controlRecipe = async function() {
         if (!recipeId) return;
         // Обновляем элемент списка(чтобы выделить активный рецепт в списке)
         (0, _resultsViewJsDefault.default).update(_modelJs.getSearchDataPart());
+        // Также обновляем элемент списка из закладок(чтобы выделить активный рецепт в списке)
+        (0, _bookmarksViewJsDefault.default).update(_modelJs.state.bookmarks);
         // Отображаем спинер
         (0, _recipeViewJsDefault.default).renderSpinner();
         // Делаем Ajax запрос рецепта
@@ -653,6 +658,8 @@ const controlBookmarks = function() {
     else _modelJs.addBookmark(_modelJs.state.recipe);
     // Обновляем UI
     (0, _recipeViewJsDefault.default).update(_modelJs.state.recipe);
+    // Отображаем рецепты из закладок в "закладках"
+    (0, _bookmarksViewJsDefault.default).render(_modelJs.state.bookmarks);
 };
 const init = function() {
     (0, _recipeViewJsDefault.default).addHandlerRender(controlRecipe);
@@ -663,7 +670,7 @@ const init = function() {
 };
 init();
 
-},{"core-js/modules/web.immediate.js":"49tUX","./model.js":"Y4A21","./views/recipeView.js":"l60JC","regenerator-runtime/runtime":"dXNgZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./views/searchView.js":"9OQAM","./views/resultsView.js":"cSbZE","./views/paginationView.js":"6z7bi"}],"49tUX":[function(require,module,exports) {
+},{"core-js/modules/web.immediate.js":"49tUX","./model.js":"Y4A21","./views/recipeView.js":"l60JC","./views/searchView.js":"9OQAM","./views/resultsView.js":"cSbZE","./views/paginationView.js":"6z7bi","regenerator-runtime/runtime":"dXNgZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./views/bookmarksView.js":"4Lqzq"}],"49tUX":[function(require,module,exports) {
 "use strict";
 // TODO: Remove this module from `core-js@4` since it's split to modules listed below
 require("52e9b3eefbbce1ed");
@@ -2190,7 +2197,7 @@ class RecipeView extends (0, _view.View) {
 }
 exports.default = new RecipeView();
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./View":"5cUXS","url:../../img/icons.svg":"loVOp","fractional":"3SU56"}],"5cUXS":[function(require,module,exports) {
+},{"./View":"5cUXS","url:../../img/icons.svg":"loVOp","fractional":"3SU56","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"5cUXS":[function(require,module,exports) {
 // SVG картинки рецептов
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
@@ -2285,7 +2292,7 @@ class View {
     }
 }
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","url:../../img/icons.svg":"loVOp"}],"loVOp":[function(require,module,exports) {
+},{"url:../../img/icons.svg":"loVOp","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"loVOp":[function(require,module,exports) {
 module.exports = require("9bcc84ee5d265e38").getBundleURL("hWUTQ") + "icons.dfd7a6db.svg" + "?" + Date.now();
 
 },{"9bcc84ee5d265e38":"lgJ39"}],"lgJ39":[function(require,module,exports) {
@@ -2576,7 +2583,128 @@ Fraction.primeFactors = function(n) {
 };
 module.exports.Fraction = Fraction;
 
-},{}],"dXNgZ":[function(require,module,exports) {
+},{}],"9OQAM":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+class SearchView {
+    // Форма поиска
+    _parentEl = document.querySelector(".search");
+    #dish;
+    // Берем блюдо из инпута введенное в поиск
+    get dish() {
+        this.#dish = this._parentEl.querySelector(".search__field").value;
+        this._clearSearchInput();
+        return this.#dish;
+    }
+    // Чистим инпут
+    _clearSearchInput() {
+        this._parentEl.querySelector(".search__field").value = "";
+    }
+    // Вешаем прослушиватель на отправку формы с инпутом(Publisher-Subscriber Pattern)
+    addHandlerSearch(handler) {
+        this._parentEl.addEventListener("submit", function(e) {
+            e.preventDefault();
+            handler();
+        });
+    }
+}
+exports.default = new SearchView();
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"cSbZE":[function(require,module,exports) {
+// Родительский класс
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+var _view = require("./View");
+var _previewViewJs = require("./previewView.js");
+var _previewViewJsDefault = parcelHelpers.interopDefault(_previewViewJs);
+class ResultsView extends (0, _view.View) {
+    // Родительский блок, куда вставляется верстка рецепта
+    _parentEl = document.querySelector(".results");
+    _createMarkup() {
+        return (0, _previewViewJsDefault.default).generateMarkup(this._data);
+    }
+}
+exports.default = new ResultsView();
+
+},{"./View":"5cUXS","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./previewView.js":"1FDQ6"}],"1FDQ6":[function(require,module,exports) {
+// Родительский класс
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+var _view = require("./View");
+class PreviewView extends (0, _view.View) {
+    // Родительский блок, куда вставляется верстка рецепта
+    _parentEl = document.querySelector(".results");
+    generateMarkup(data) {
+        // Получаем хэш
+        const currRecipeId = window.location.hash.slice(1);
+        return data.reduce((acc, recipe)=>{
+            const card = `
+        <li class="preview">
+          <a class="preview__link preview__link ${currRecipeId === recipe.id ? "preview__link--active" : ""}" href="#${recipe.id}">
+            <figure class="preview__fig">
+              <img src="${recipe.imageUrl}" alt="${recipe.title}"/>
+            </figure>
+            <div class="preview__data">
+              <h4 class="preview__title">${recipe.title}</h4>
+              <p class="preview__publisher">${recipe.publisher}</p>
+            </div>
+          </a>
+        </li>
+        `;
+            return acc + card;
+        }, "");
+    }
+}
+exports.default = new PreviewView();
+
+},{"./View":"5cUXS","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"6z7bi":[function(require,module,exports) {
+// SVG картинки рецептов
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+var _iconsSvg = require("url:../../img/icons.svg");
+var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
+var _view = require("./View");
+class PaginationView extends (0, _view.View) {
+    _parentEl = document.querySelector(".pagination");
+    // Возвращает верстку кнопок "предыдущая"/"следующая" страница
+    _createMarkup() {
+        const btnPrev = `
+      <button data-goto="${this._data.currentPage - 1}" class="btn--inline pagination__btn--prev">
+          <svg class="search__icon">
+              <use href="${(0, _iconsSvgDefault.default)}#icon-arrow-left"></use>
+          </svg>
+          <span>Page ${this._data.currentPage - 1}</span>
+      </button>`;
+        const btnNext = `
+      <button data-goto="${this._data.currentPage + 1}" class="btn--inline pagination__btn--next">
+        <span>Page ${this._data.currentPage + 1}</span>
+         <svg class="search__icon">
+            <use href="${(0, _iconsSvgDefault.default)}#icon-arrow-right"></use>
+        </svg>
+      </button>`;
+        //Если данных всего на одну страницу, то кнопки не отобразятся
+        if (!(this._data.totalPages - 1)) return "";
+        // Если тек-я стр 1 и кол-во данных больше, чем на одну страницу, то возвращаем только кнопку "следующий"
+        if (this._data.currentPage === 1 && this._data.totalPages > 1) return btnNext;
+        // Если текущая страница === общему кол-ву страниц, то возвращаем только кнопку "предыдущий"
+        if (this._data.totalPages === this._data.currentPage) return btnPrev;
+        // Иначе возвращаем обе кнопки
+        return btnPrev + btnNext;
+    }
+    // Привязываем прослушиватель к общему родителю кнопок перелистывания списка рецептов(делегирование)Publisher-Subscriber Pattern
+    addHandlerPagination(handler) {
+        this._parentEl.addEventListener("click", (function(e) {
+            const btn = e.target.closest(".btn--inline");
+            if (!btn) return;
+            // Значение = либо следующей странице, либо предыдушей
+            const goToNum = +btn.dataset.goto;
+            handler(goToNum);
+        }).bind(this));
+    }
+}
+exports.default = new PaginationView();
+
+},{"url:../../img/icons.svg":"loVOp","./View":"5cUXS","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"dXNgZ":[function(require,module,exports) {
 /**
  * Copyright (c) 2014-present, Facebook, Inc.
  *
@@ -3161,111 +3289,22 @@ try {
     else Function("r", "regeneratorRuntime = r")(runtime);
 }
 
-},{}],"9OQAM":[function(require,module,exports) {
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-class SearchView {
-    // Форма поиска
-    _parentEl = document.querySelector(".search");
-    #dish;
-    // Берем блюдо из инпута введенное в поиск
-    get dish() {
-        this.#dish = this._parentEl.querySelector(".search__field").value;
-        this._clearSearchInput();
-        return this.#dish;
-    }
-    // Чистим инпут
-    _clearSearchInput() {
-        this._parentEl.querySelector(".search__field").value = "";
-    }
-    // Вешаем прослушиватель на отправку формы с инпутом(Publisher-Subscriber Pattern)
-    addHandlerSearch(handler) {
-        this._parentEl.addEventListener("submit", function(e) {
-            e.preventDefault();
-            handler();
-        });
-    }
-}
-exports.default = new SearchView();
-
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"cSbZE":[function(require,module,exports) {
+},{}],"4Lqzq":[function(require,module,exports) {
 // Родительский класс
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 var _view = require("./View");
-class resultsView extends (0, _view.View) {
+var _previewViewJs = require("./previewView.js");
+var _previewViewJsDefault = parcelHelpers.interopDefault(_previewViewJs);
+class BookmarksView extends (0, _view.View) {
     // Родительский блок, куда вставляется верстка рецепта
-    _parentEl = document.querySelector(".results");
+    _parentEl = document.querySelector(".bookmarks");
     _createMarkup() {
-        // Получаем хэш
-        const currRecipeId = window.location.hash.slice(1);
-        return this._data.reduce((acc, recipe)=>{
-            const card = `
-        <li class="preview">
-          <a class="preview__link preview__link ${currRecipeId === recipe.id ? "preview__link--active" : ""}" href="#${recipe.id}">
-            <figure class="preview__fig">
-              <img src="${recipe.imageUrl}" alt="${recipe.title}"/>
-            </figure>
-            <div class="preview__data">
-              <h4 class="preview__title">${recipe.title}</h4>
-              <p class="preview__publisher">${recipe.publisher}</p>
-            </div>
-          </a>
-        </li>
-        `;
-            return acc + card;
-        }, "");
+        return (0, _previewViewJsDefault.default).generateMarkup(this._data);
     }
 }
-exports.default = new resultsView();
+exports.default = new BookmarksView();
 
-},{"./View":"5cUXS","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"6z7bi":[function(require,module,exports) {
-// SVG картинки рецептов
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-var _iconsSvg = require("url:../../img/icons.svg");
-var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
-var _view = require("./View");
-class PaginationView extends (0, _view.View) {
-    _parentEl = document.querySelector(".pagination");
-    // Возвращает верстку кнопок "предыдущая"/"следующая" страница
-    _createMarkup() {
-        const btnPrev = `
-      <button data-goto="${this._data.currentPage - 1}" class="btn--inline pagination__btn--prev">
-          <svg class="search__icon">
-              <use href="${(0, _iconsSvgDefault.default)}#icon-arrow-left"></use>
-          </svg>
-          <span>Page ${this._data.currentPage - 1}</span>
-      </button>`;
-        const btnNext = `
-      <button data-goto="${this._data.currentPage + 1}" class="btn--inline pagination__btn--next">
-        <span>Page ${this._data.currentPage + 1}</span>
-         <svg class="search__icon">
-            <use href="${(0, _iconsSvgDefault.default)}#icon-arrow-right"></use>
-        </svg>
-      </button>`;
-        //Если данных всего на одну страницу, то кнопки не отобразятся
-        if (!(this._data.totalPages - 1)) return "";
-        // Если тек-я стр 1 и кол-во данных больше, чем на одну страницу, то возвращаем только кнопку "следующий"
-        if (this._data.currentPage === 1 && this._data.totalPages > 1) return btnNext;
-        // Если текущая страница === общему кол-ву страниц, то возвращаем только кнопку "предыдущий"
-        if (this._data.totalPages === this._data.currentPage) return btnPrev;
-        // Иначе возвращаем обе кнопки
-        return btnPrev + btnNext;
-    }
-    // Привязываем прослушиватель к общему родителю кнопок перелистывания списка рецептов(делегирование)Publisher-Subscriber Pattern
-    addHandlerPagination(handler) {
-        this._parentEl.addEventListener("click", (function(e) {
-            const btn = e.target.closest(".btn--inline");
-            if (!btn) return;
-            // Значение = либо следующей странице, либо предыдушей
-            const goToNum = +btn.dataset.goto;
-            handler(goToNum);
-        }).bind(this));
-    }
-}
-exports.default = new PaginationView();
-
-},{"url:../../img/icons.svg":"loVOp","./View":"5cUXS","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["f0HGD","aenu9"], "aenu9", "parcelRequire3a11")
+},{"./View":"5cUXS","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./previewView.js":"1FDQ6"}]},["f0HGD","aenu9"], "aenu9", "parcelRequire3a11")
 
 //# sourceMappingURL=index.e37f48ea.js.map
