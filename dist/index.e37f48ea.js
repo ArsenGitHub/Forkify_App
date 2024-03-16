@@ -607,7 +607,7 @@ const controlRecipe = async function() {
         if (!recipeId) return;
         // Обновляем элемент списка(чтобы выделить активный рецепт в списке)
         (0, _resultsViewJsDefault.default).update(_modelJs.getSearchDataPart());
-        // Также обновляем элемент списка из закладок(чтобы выделить активный рецепт в списке)
+        // Обновляем элемент списка из закладок
         (0, _bookmarksViewJsDefault.default).update(_modelJs.state.bookmarks);
         // Отображаем спинер
         (0, _recipeViewJsDefault.default).renderSpinner();
@@ -652,7 +652,7 @@ const controlServings = function(newServings) {
     (0, _recipeViewJsDefault.default).update(_modelJs.state.recipe);
 };
 // Управляет закладками рецептов
-const controlBookmarks = function() {
+const controlBookmark = function() {
     // Если рецепт в "закладках", то удаляем его из "закладок". Иначе добавляем в закладки
     if (_modelJs.state.recipe.bookmarked) _modelJs.removeBookmark(_modelJs.state.recipe.id);
     else _modelJs.addBookmark(_modelJs.state.recipe);
@@ -661,10 +661,15 @@ const controlBookmarks = function() {
     // Отображаем рецепты из закладок в "закладках"
     (0, _bookmarksViewJsDefault.default).render(_modelJs.state.bookmarks);
 };
+// Для отображения списка закладок после полной прогрузки сайта
+const controlBookmarksList = function() {
+    (0, _bookmarksViewJsDefault.default).render(_modelJs.state.bookmarks);
+};
 const init = function() {
     (0, _recipeViewJsDefault.default).addHandlerRender(controlRecipe);
     (0, _recipeViewJsDefault.default).addHandlerServings(controlServings);
-    (0, _recipeViewJsDefault.default).addHandlerBookmark(controlBookmarks);
+    (0, _recipeViewJsDefault.default).addHandlerBookmark(controlBookmark);
+    (0, _bookmarksViewJsDefault.default).addHandlerRender(controlBookmarksList);
     (0, _searchViewJsDefault.default).addHandlerSearch(controlSearchResults);
     (0, _paginationViewJsDefault.default).addHandlerPagination(controlPagination);
 };
@@ -1980,17 +1985,32 @@ const changeServings = function(newServings) {
     // Меняем количество порции в обьекте
     state.recipe.servings = newServings;
 };
+// Ф-я сохранения/удал-я закладок из хранилища
+const manageStorage = function() {
+    localStorage.setItem("bookmarks", JSON.stringify(state.bookmarks));
+};
 const addBookmark = function(recipe) {
     // Сохраняем рецепт в закладках
     state.bookmarks.push(recipe);
     state.recipe.bookmarked = true;
+    // Обновление хранилища
+    manageStorage();
 };
 const removeBookmark = function(recipeId) {
     const bookmarksRecipeInd = state.bookmarks.findIndex((bookmarkedRecipe)=>bookmarkedRecipe.id === recipeId);
     // Удаляем этот рецепт из массива "закладок"
     state.bookmarks.splice(bookmarksRecipeInd, 1);
     if (recipeId === state.recipe.id) state.recipe.bookmarked = false;
+    // Обновление хранилища
+    manageStorage();
 };
+// Вытаскиваем данные "закладок" из локального хранилища, чтобы они могли быть отображены в "закладках"
+const init = function() {
+    // Если пустой, то null
+    const storage = JSON.parse(localStorage.getItem("bookmarks"));
+    if (storage) state.bookmarks = storage;
+};
+init();
 
 },{"./config":"k5Hzs","./helpers":"hGI1E","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"k5Hzs":[function(require,module,exports) {
 // Forkify API
@@ -2233,6 +2253,8 @@ class View {
         const newElements = Array.from(newDOM.querySelectorAll("*"));
         // Старые узлы верстки
         const currentElements = Array.from(this._parentEl.querySelectorAll("*"));
+        // Для выполнения update, кол-во стар-х узлов === кол-ву новых узлов, т.к. он для "обновления", а не добавления новых узлов. Иначе приводит к ошибке
+        if (currentElements.length - newElements.length) return;
         newElements.forEach((newEl, i)=>{
             // Узел "старой" верстки
             const curEl = currentElements[i];
@@ -3299,8 +3321,13 @@ var _previewViewJsDefault = parcelHelpers.interopDefault(_previewViewJs);
 class BookmarksView extends (0, _view.View) {
     // Родительский блок, куда вставляется верстка рецепта
     _parentEl = document.querySelector(".bookmarks");
+    _errorMessage = "Please, Add your bookmarks and enjoy your cooking!";
     _createMarkup() {
         return (0, _previewViewJsDefault.default).generateMarkup(this._data);
+    }
+    // Для отображения списка закладок после полной прогрузки сайта
+    addHandlerRender(handler) {
+        window.addEventListener("load", handler);
     }
 }
 exports.default = new BookmarksView();

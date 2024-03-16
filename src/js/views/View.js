@@ -34,6 +34,9 @@ export class View {
     // Старые узлы верстки
     const currentElements = Array.from(this._parentEl.querySelectorAll('*'));
 
+    // Для выполнения update, кол-во стар-х узлов === кол-ву новых узлов, т.к. он для "обновления", а не добавления новых узлов. Иначе приводит к ошибке
+    if (currentElements.length - newElements.length) return;
+
     newElements.forEach((newEl, i) => {
       // Узел "старой" верстки
       const curEl = currentElements[i];

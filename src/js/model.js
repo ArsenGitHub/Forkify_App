@@ -93,11 +93,18 @@ export const changeServings = function (newServings) {
   state.recipe.servings = newServings;
 };
 
+// Ф-я сохранения/удал-я закладок из хранилища
+const manageStorage = function () {
+  localStorage.setItem('bookmarks', JSON.stringify(state.bookmarks));
+};
+
 //Ф-я для создания закладки на рецепте. Принимает рецепт и сохраняет его в state
 export const addBookmark = function (recipe) {
   // Сохраняем рецепт в закладках
   state.bookmarks.push(recipe);
   state.recipe.bookmarked = true;
+  // Обновление хранилища
+  manageStorage();
 };
 
 // Ф-я для удаления рецепта из закладок
@@ -108,4 +115,15 @@ export const removeBookmark = function (recipeId) {
   // Удаляем этот рецепт из массива "закладок"
   state.bookmarks.splice(bookmarksRecipeInd, 1);
   if (recipeId === state.recipe.id) state.recipe.bookmarked = false;
+  // Обновление хранилища
+  manageStorage();
 };
+
+// Вытаскиваем данные "закладок" из локального хранилища, чтобы они могли быть отображены в "закладках"
+const init = function () {
+  // Если пустой, то null
+  const storage = JSON.parse(localStorage.getItem('bookmarks'));
+  if (storage) state.bookmarks = storage;
+};
+
+init();

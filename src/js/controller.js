@@ -24,7 +24,7 @@ const controlRecipe = async function () {
 
     // Обновляем элемент списка(чтобы выделить активный рецепт в списке)
     resultsView.update(model.getSearchDataPart());
-    // Также обновляем элемент списка из закладок(чтобы выделить активный рецепт в списке)
+    // Обновляем элемент списка из закладок
     bookmarksView.update(model.state.bookmarks);
     // Отображаем спинер
     recipeView.renderSpinner();
@@ -76,7 +76,7 @@ const controlServings = function (newServings) {
 };
 
 // Управляет закладками рецептов
-const controlBookmarks = function () {
+const controlBookmark = function () {
   // Если рецепт в "закладках", то удаляем его из "закладок". Иначе добавляем в закладки
   if (model.state.recipe.bookmarked) {
     model.removeBookmark(model.state.recipe.id);
@@ -89,10 +89,16 @@ const controlBookmarks = function () {
   bookmarksView.render(model.state.bookmarks);
 };
 
+// Для отображения списка закладок после полной прогрузки сайта
+const controlBookmarksList = function () {
+  bookmarksView.render(model.state.bookmarks);
+};
+
 const init = function () {
   recipeView.addHandlerRender(controlRecipe);
   recipeView.addHandlerServings(controlServings);
-  recipeView.addHandlerBookmark(controlBookmarks);
+  recipeView.addHandlerBookmark(controlBookmark);
+  bookmarksView.addHandlerRender(controlBookmarksList);
   searchView.addHandlerSearch(controlSearchResults);
   paginationView.addHandlerPagination(controlPagination);
 };
