@@ -1,17 +1,12 @@
 // Импорт обьекта status и ф-и Ajax запроса рецептов
 import * as model from './model.js';
-// Экземпляр(instance) класса recipeView(default import)
 import view from './views/View.js';
-// Экземпляр(instance) класса recipeView(default import)
 import recipeView from './views/recipeView.js';
-// Экземпляр(instance) класса SearchView(default import)
 import searchView from './views/searchView.js';
-// Экземпляр(instance) класса SearchView(default import)
 import resultsView from './views/resultsView.js';
-// Экземпляр(instance) класса PaginationView(default import)
 import paginationView from './views/paginationView.js';
-// Экземпляр(instance) класса BookmarksnView(default import)
 import bookmarksView from './views/bookmarksView.js';
+import addRecipeView from './views/addRecipeView.js';
 
 // Полифилы
 import 'core-js/stable';
@@ -96,6 +91,8 @@ const controlBookmarksList = function () {
   bookmarksView.render(model.state.bookmarks);
 };
 
+const controlAddRecipe = function (ownRecipeData) {};
+
 const init = function () {
   recipeView.addHandlerRender(controlRecipe);
   recipeView.addHandlerServings(controlServings);
@@ -103,5 +100,6 @@ const init = function () {
   bookmarksView.addHandlerRender(controlBookmarksList);
   searchView.addHandlerSearch(controlSearchResults);
   paginationView.addHandlerPagination(controlPagination);
+  addRecipeView.addHandlerUdload(controlAddRecipe);
 };
 init();

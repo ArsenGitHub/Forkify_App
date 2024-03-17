@@ -126,4 +126,6 @@ const init = function () {
   if (storage) state.bookmarks = storage;
 };
 
+const sendRecipeData = function (data) {};
+
 init();
