@@ -1,6 +1,8 @@
 // Импорт обьекта status и ф-и Ajax запроса рецептов
 import * as model from './model.js';
 // Экземпляр(instance) класса recipeView(default import)
+import view from './views/View.js';
+// Экземпляр(instance) класса recipeView(default import)
 import recipeView from './views/recipeView.js';
 // Экземпляр(instance) класса SearchView(default import)
 import searchView from './views/searchView.js';

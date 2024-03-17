@@ -584,6 +584,9 @@ var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 var _webImmediateJs = require("core-js/modules/web.immediate.js");
 var _modelJs = require("./model.js");
 // Экземпляр(instance) класса recipeView(default import)
+var _viewJs = require("./views/View.js");
+var _viewJsDefault = parcelHelpers.interopDefault(_viewJs);
+// Экземпляр(instance) класса recipeView(default import)
 var _recipeViewJs = require("./views/recipeView.js");
 var _recipeViewJsDefault = parcelHelpers.interopDefault(_recipeViewJs);
 // Экземпляр(instance) класса SearchView(default import)
@@ -675,7 +678,7 @@ const init = function() {
 };
 init();
 
-},{"core-js/modules/web.immediate.js":"49tUX","./model.js":"Y4A21","./views/recipeView.js":"l60JC","./views/searchView.js":"9OQAM","./views/resultsView.js":"cSbZE","./views/paginationView.js":"6z7bi","regenerator-runtime/runtime":"dXNgZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./views/bookmarksView.js":"4Lqzq"}],"49tUX":[function(require,module,exports) {
+},{"core-js/modules/web.immediate.js":"49tUX","./model.js":"Y4A21","./views/recipeView.js":"l60JC","./views/searchView.js":"9OQAM","./views/resultsView.js":"cSbZE","./views/paginationView.js":"6z7bi","regenerator-runtime/runtime":"dXNgZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./views/bookmarksView.js":"4Lqzq","./views/View.js":"5cUXS"}],"49tUX":[function(require,module,exports) {
 "use strict";
 // TODO: Remove this module from `core-js@4` since it's split to modules listed below
 require("52e9b3eefbbce1ed");
@@ -2224,15 +2227,14 @@ parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "View", ()=>View);
 var _iconsSvg = require("url:../../img/icons.svg");
 var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
-const logo = document.querySelector(".header__logo");
-logo.addEventListener("click", function() {
-    window.location.hash = "";
-    window.location.reload();
-});
 class View {
     _data;
     _errorMessage = "Can not find recipe. Try another one!";
     _succesMessage = "Success";
+    _logo = document.querySelector(".header__logo");
+    constructor(){
+        this._addHandlerRefresh();
+    }
     // Отображение данных в UI
     render(data) {
         // Проверяем, что пришедший массив от API не пустой(при ошибке ввода имени рецепта)
@@ -2312,7 +2314,14 @@ class View {
         this._parentEl.innerHTML = "";
         this._parentEl.insertAdjacentHTML("beforeend", markup);
     }
+    _addHandlerRefresh() {
+        this._logo.addEventListener("click", function() {
+            window.location.hash = "";
+            window.location.reload();
+        });
+    }
 }
+exports.default = new View();
 
 },{"url:../../img/icons.svg":"loVOp","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"loVOp":[function(require,module,exports) {
 module.exports = require("9bcc84ee5d265e38").getBundleURL("hWUTQ") + "icons.dfd7a6db.svg" + "?" + Date.now();
