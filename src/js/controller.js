@@ -100,8 +100,13 @@ const controlAddRecipe = async function (ownRecipeData) {
     await model.uploadRecipeData(ownRecipeData);
     // Отображаем наш отправленный рецепт
     recipeView.render(model.state.recipe);
+    // Отображаем список закладок с новым рецептом
+    bookmarksView.render(model.state.bookmarks);
     // Отображаем вместо формы сообщение об успешной отправке данных
     addRecipeView.renderSuccess();
+    // Меняем URL, добавляем id нашего рецепта
+    window.history.pushState({}, '', `#${model.state.recipe.id}`);
+    // window.location.hash = model.state.recipe.id;
     // Скрывем форму и оверлэй
     setTimeout(function () {
       addRecipeView._handlerShowHide();

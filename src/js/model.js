@@ -1,7 +1,7 @@
 // Forkify API
 import { API_URL, KEY } from './config';
 // Fetch helper
-import { getData, sendData } from './helpers';
+import { AJAX } from './helpers';
 // Кол-во рецептов на страницу
 import { ITEMS_PER_PAGE } from './config';
 
@@ -22,7 +22,7 @@ export const loadSearchResults = async function (dish) {
     // Сохраняем блюдо из поиска
     state.search.dish = dish;
     // Запрашиваем данные рецептов на основе блюда из инпута
-    const data = await getData(`${API_URL}?search=${dish}&key=${KEY}`);
+    const data = await AJAX(`${API_URL}?search=${dish}&key=${KEY}`);
     // Общее количество страниц необходимое для отображаения рецептов
     state.search.totalPages = Math.ceil(
       data.data.recipes.length / state.search.itemsPerPage
@@ -34,6 +34,7 @@ export const loadSearchResults = async function (dish) {
         imageUrl: recipe.image_url,
         publisher: recipe.publisher,
         title: recipe.title,
+        ...(recipe.key && { key: recipe.key }),
       };
     });
   } catch (err) {
@@ -60,7 +61,7 @@ const formatObjectData = function (dataObj) {
 // Запрос данных рецепта из Forkify API
 export const loadRecipe = async function (recipeId) {
   try {
-    const data = await getData(API_URL + recipeId);
+    const data = await AJAX(API_URL + recipeId);
     // Переформатируем св-ва обьекта
     state.recipe = formatObjectData(data);
     // Есть ли рецепт в закладках
@@ -136,7 +137,7 @@ export const uploadRecipeData = async function (ownRecipeData) {
     const ingredients = Object.entries(ownRecipeData)
       .filter((entry) => entry[0].includes('ingredient') && entry[1] !== '')
       .map((ingr) => {
-        const ingrArr = ingr[1].split(',');
+        const ingrArr = ingr[1].split(',').map((ingr) => ingr.trim());
 
         // Если в инпуте меньше 3х св-в(quantity, unit, description)
         if (ingrArr.length !== 3)
@@ -145,7 +146,7 @@ export const uploadRecipeData = async function (ownRecipeData) {
           );
 
         const [quantity, unit, description] = ingrArr;
-        return { quantity: quantity, unit, description };
+        return { quantity, unit, description };
       });
 
     // Итоговый обьект с данными для отправки на сервер
@@ -159,7 +160,7 @@ export const uploadRecipeData = async function (ownRecipeData) {
       ingredients,
     };
 
-    const data = await sendData(`${API_URL}?key=${KEY}`, recipe);
+    const data = await AJAX(`${API_URL}?key=${KEY}`, recipe);
     // Переформатируем полученные данные от сервера под формат нашего приложения
     state.recipe = formatObjectData(data);
     // Закинем их в закладки

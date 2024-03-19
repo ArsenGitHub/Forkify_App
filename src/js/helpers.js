@@ -10,29 +10,18 @@ const timeout = function (s) {
   });
 };
 
-// Ф-я для получения данных с API
-export const getData = async function (url) {
+// Ф-я для получения/отправки данных с API
+export const AJAX = async function (url, recipeData = undefined) {
   try {
-    const response = await Promise.race([fetch(url), timeout(TIMEOUT_SEC)]);
-    const data = await response.json();
-    if (!response.ok) throw new Error(`${data.message}(${response.status})`);
-
-    return data;
-  } catch (err) {
-    throw err;
-  }
-};
-
-// Ф-я для отправки данных на сервер
-export const sendData = async function (url, recipeData) {
-  try {
-    const fetchData = fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(recipeData),
-    });
+    const fetchData = recipeData
+      ? fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(recipeData),
+        })
+      : fetch(url);
 
     const response = await Promise.race([fetchData, timeout(TIMEOUT_SEC)]);
     const data = await response.json();

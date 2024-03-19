@@ -673,8 +673,13 @@ const controlAddRecipe = async function(ownRecipeData) {
         await _modelJs.uploadRecipeData(ownRecipeData);
         // Отображаем наш отправленный рецепт
         (0, _recipeViewJsDefault.default).render(_modelJs.state.recipe);
+        // Отображаем список закладок с новым рецептом
+        (0, _bookmarksViewJsDefault.default).render(_modelJs.state.bookmarks);
         // Отображаем вместо формы сообщение об успешной отправке данных
         (0, _addRecipeViewJsDefault.default).renderSuccess();
+        // Меняем URL, добавляем id нашего рецепта
+        window.history.pushState({}, "", `#${_modelJs.state.recipe.id}`);
+        // window.location.hash = model.state.recipe.id;
         // Скрывем форму и оверлэй
         setTimeout(function() {
             (0, _addRecipeViewJsDefault.default)._handlerShowHide();
@@ -1956,7 +1961,7 @@ const loadSearchResults = async function(dish) {
         // Сохраняем блюдо из поиска
         state.search.dish = dish;
         // Запрашиваем данные рецептов на основе блюда из инпута
-        const data = await (0, _helpers.getData)(`${(0, _config.API_URL)}?search=${dish}&key=${(0, _config.KEY)}`);
+        const data = await (0, _helpers.AJAX)(`${(0, _config.API_URL)}?search=${dish}&key=${(0, _config.KEY)}`);
         // Общее количество страниц необходимое для отображаения рецептов
         state.search.totalPages = Math.ceil(data.data.recipes.length / state.search.itemsPerPage);
         state.search.results = data.data.recipes.map((recipe)=>{
@@ -1964,7 +1969,10 @@ const loadSearchResults = async function(dish) {
                 id: recipe.id,
                 imageUrl: recipe.image_url,
                 publisher: recipe.publisher,
-                title: recipe.title
+                title: recipe.title,
+                ...recipe.key && {
+                    key: recipe.key
+                }
             };
         });
     } catch (err) {
@@ -1990,7 +1998,7 @@ const formatObjectData = function(dataObj) {
 };
 const loadRecipe = async function(recipeId) {
     try {
-        const data = await (0, _helpers.getData)((0, _config.API_URL) + recipeId);
+        const data = await (0, _helpers.AJAX)((0, _config.API_URL) + recipeId);
         // Переформатируем св-ва обьекта
         state.recipe = formatObjectData(data);
         // Есть ли рецепт в закладках
@@ -2042,12 +2050,12 @@ const uploadRecipeData = async function(ownRecipeData) {
     try {
         // Данные из формы => форматируем под стандарт API
         const ingredients = Object.entries(ownRecipeData).filter((entry)=>entry[0].includes("ingredient") && entry[1] !== "").map((ingr)=>{
-            const ingrArr = ingr[1].split(",");
+            const ingrArr = ingr[1].split(",").map((ingr)=>ingr.trim());
             // Если в инпуте меньше 3х св-в(quantity, unit, description)
             if (ingrArr.length !== 3) throw new Error("Wrong ingredients format. Please, follow the example formatting");
             const [quantity, unit, description] = ingrArr;
             return {
-                quantity: quantity,
+                quantity,
                 unit,
                 description
             };
@@ -2062,7 +2070,7 @@ const uploadRecipeData = async function(ownRecipeData) {
             title: ownRecipeData.title,
             ingredients
         };
-        const data = await (0, _helpers.sendData)(`${(0, _config.API_URL)}?key=${(0, _config.KEY)}`, recipe);
+        const data = await (0, _helpers.AJAX)(`${(0, _config.API_URL)}?key=${(0, _config.KEY)}`, recipe);
         // Переформатируем полученные данные от сервера под формат нашего приложения
         state.recipe = formatObjectData(data);
         // Закинем их в закладки
@@ -2122,8 +2130,7 @@ exports.export = function(dest, destName, get) {
 // Время ожидания промиса
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "getData", ()=>getData);
-parcelHelpers.export(exports, "sendData", ()=>sendData);
+parcelHelpers.export(exports, "AJAX", ()=>AJAX);
 var _config = require("./config");
 // Функция для защиты от бесконечно длящегося промиса
 const timeout = function(s) {
@@ -2133,28 +2140,15 @@ const timeout = function(s) {
         }, s * 1000);
     });
 };
-const getData = async function(url) {
+const AJAX = async function(url, recipeData) {
     try {
-        const response = await Promise.race([
-            fetch(url),
-            timeout((0, _config.TIMEOUT_SEC))
-        ]);
-        const data = await response.json();
-        if (!response.ok) throw new Error(`${data.message}(${response.status})`);
-        return data;
-    } catch (err) {
-        throw err;
-    }
-};
-const sendData = async function(url, recipeData) {
-    try {
-        const fetchData = fetch(url, {
+        const fetchData = recipeData ? fetch(url, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify(recipeData)
-        });
+        }) : fetch(url);
         const response = await Promise.race([
             fetchData,
             timeout((0, _config.TIMEOUT_SEC))
@@ -2220,7 +2214,7 @@ class RecipeView extends (0, _view.View) {
           </div>
         </div>
 
-        <div class="recipe__user-generated">
+        <div class="recipe__user-generated ${this._data.key ? "" : "hidden"}">
           <svg>
             <use href="${0, _iconsSvgDefault.default}#icon-user"></use>
           </svg>
@@ -2745,6 +2739,9 @@ exports.default = new ResultsView();
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 var _view = require("./View");
+// SVG картинки рецептов
+var _iconsSvg = require("url:../../img/icons.svg");
+var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
 class PreviewView extends (0, _view.View) {
     // Родительский блок, куда вставляется верстка рецепта
     _parentEl = document.querySelector(".results");
@@ -2761,6 +2758,11 @@ class PreviewView extends (0, _view.View) {
             <div class="preview__data">
               <h4 class="preview__title">${recipe.title}</h4>
               <p class="preview__publisher">${recipe.publisher}</p>
+              <div class="preview__user-generated ${recipe.key ? "" : "hidden"}">
+                <svg>
+                  <use href="${(0, _iconsSvgDefault.default)}#icon-user"></use>
+                </svg>
+            </div>
             </div>
           </a>
         </li>
@@ -2771,7 +2773,7 @@ class PreviewView extends (0, _view.View) {
 }
 exports.default = new PreviewView();
 
-},{"./View":"5cUXS","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"6z7bi":[function(require,module,exports) {
+},{"./View":"5cUXS","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","url:../../img/icons.svg":"loVOp"}],"6z7bi":[function(require,module,exports) {
 // SVG картинки рецептов
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
