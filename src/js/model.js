@@ -1,7 +1,7 @@
 // Forkify API
-import { API_URL } from './config';
+import { API_URL, KEY } from './config';
 // Fetch helper
-import { getData } from './helpers';
+import { getData, sendData } from './helpers';
 // Кол-во рецептов на страницу
 import { ITEMS_PER_PAGE } from './config';
 
@@ -22,9 +22,7 @@ export const loadSearchResults = async function (dish) {
     // Сохраняем блюдо из поиска
     state.search.dish = dish;
     // Запрашиваем данные рецептов на основе блюда из инпута
-    const data = await getData(
-      `${API_URL}?search=${dish}&key=b8654b87-eb3f-4393-b226-d15907312864`
-    );
+    const data = await getData(`${API_URL}?search=${dish}&key=${KEY}`);
     // Общее количество страниц необходимое для отображаения рецептов
     state.search.totalPages = Math.ceil(
       data.data.recipes.length / state.search.itemsPerPage
@@ -43,23 +41,28 @@ export const loadSearchResults = async function (dish) {
   }
 };
 
+// Ф-я переформатирования св-в обьекта
+const formatObjectData = function (dataObj) {
+  const { recipe } = dataObj.data;
+  return {
+    cookingTime: recipe.cooking_time,
+    id: recipe.id,
+    imageUrl: recipe.image_url,
+    ingredients: recipe.ingredients,
+    publisher: recipe.publisher,
+    servings: recipe.servings,
+    sourceUrl: recipe.source_url,
+    title: recipe.title,
+    ...(recipe.key && { key: recipe.key }),
+  };
+};
+
 // Запрос данных рецепта из Forkify API
 export const loadRecipe = async function (recipeId) {
   try {
     const data = await getData(API_URL + recipeId);
-
-    const { recipe } = data.data;
-    state.recipe = {
-      cookingTime: recipe.cooking_time,
-      id: recipe.id,
-      imageUrl: recipe.image_url,
-      ingredients: recipe.ingredients,
-      publisher: recipe.publisher,
-      servings: recipe.servings,
-      sourceUrl: recipe.source_url,
-      title: recipe.title,
-    };
-
+    // Переформатируем св-ва обьекта
+    state.recipe = formatObjectData(data);
     // Есть ли рецепт в закладках
     state.recipe.bookmarked = state.bookmarks.some(
       (bookmarkedRecipe) => bookmarkedRecipe.id === recipeId
@@ -126,6 +129,44 @@ const init = function () {
   if (storage) state.bookmarks = storage;
 };
 
-const sendRecipeData = function (data) {};
+// Ф-я для отправки данных рецепта на сервер
+export const uploadRecipeData = async function (ownRecipeData) {
+  try {
+    // Данные из формы => форматируем под стандарт API
+    const ingredients = Object.entries(ownRecipeData)
+      .filter((entry) => entry[0].includes('ingredient') && entry[1] !== '')
+      .map((ingr) => {
+        const ingrArr = ingr[1].split(',');
+
+        // Если в инпуте меньше 3х св-в(quantity, unit, description)
+        if (ingrArr.length !== 3)
+          throw new Error(
+            'Wrong ingredients format. Please, follow the example formatting'
+          );
+
+        const [quantity, unit, description] = ingrArr;
+        return { quantity: quantity, unit, description };
+      });
+
+    // Итоговый обьект с данными для отправки на сервер
+    const recipe = {
+      cooking_time: +ownRecipeData.cookingTime,
+      image_url: ownRecipeData.image,
+      publisher: ownRecipeData.publisher,
+      servings: +ownRecipeData.servings,
+      source_url: ownRecipeData.sourceUrl,
+      title: ownRecipeData.title,
+      ingredients,
+    };
+
+    const data = await sendData(`${API_URL}?key=${KEY}`, recipe);
+    // Переформатируем полученные данные от сервера под формат нашего приложения
+    state.recipe = formatObjectData(data);
+    // Закинем их в закладки
+    addBookmark(state.recipe);
+  } catch (err) {
+    throw err;
+  }
+};
 
 init();

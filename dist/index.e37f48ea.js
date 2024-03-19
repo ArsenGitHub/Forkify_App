@@ -597,6 +597,7 @@ var _bookmarksViewJs = require("./views/bookmarksView.js");
 var _bookmarksViewJsDefault = parcelHelpers.interopDefault(_bookmarksViewJs);
 var _addRecipeViewJs = require("./views/addRecipeView.js");
 var _addRecipeViewJsDefault = parcelHelpers.interopDefault(_addRecipeViewJs);
+var _configJs = require("./config.js");
 var _runtime = require("regenerator-runtime/runtime");
 // Управляет запросом данных в модели и отображением рецепта в представлении
 const controlRecipe = async function() {
@@ -664,7 +665,24 @@ const controlBookmark = function() {
 const controlBookmarksList = function() {
     (0, _bookmarksViewJsDefault.default).render(_modelJs.state.bookmarks);
 };
-const controlAddRecipe = function(ownRecipeData) {};
+// Отправка данных св-его рецепта и его отображение
+const controlAddRecipe = async function(ownRecipeData) {
+    try {
+        (0, _addRecipeViewJsDefault.default).renderSpinner();
+        // Отправляем данные на сервер
+        await _modelJs.uploadRecipeData(ownRecipeData);
+        // Отображаем наш отправленный рецепт
+        (0, _recipeViewJsDefault.default).render(_modelJs.state.recipe);
+        // Отображаем вместо формы сообщение об успешной отправке данных
+        (0, _addRecipeViewJsDefault.default).renderSuccess();
+        // Скрывем форму и оверлэй
+        setTimeout(function() {
+            (0, _addRecipeViewJsDefault.default)._handlerShowHide();
+        }, (0, _configJs.FORM_HIDE_SEC) * 1000);
+    } catch (err) {
+        (0, _addRecipeViewJsDefault.default).renderError(err.message);
+    }
+};
 const init = function() {
     (0, _recipeViewJsDefault.default).addHandlerRender(controlRecipe);
     (0, _recipeViewJsDefault.default).addHandlerServings(controlServings);
@@ -672,11 +690,11 @@ const init = function() {
     (0, _bookmarksViewJsDefault.default).addHandlerRender(controlBookmarksList);
     (0, _searchViewJsDefault.default).addHandlerSearch(controlSearchResults);
     (0, _paginationViewJsDefault.default).addHandlerPagination(controlPagination);
-    (0, _addRecipeViewJsDefault.default).addHandlerUdload(controlAddRecipe);
+    (0, _addRecipeViewJsDefault.default).addHandlerUpload(controlAddRecipe);
 };
 init();
 
-},{"core-js/modules/web.immediate.js":"49tUX","./model.js":"Y4A21","./views/recipeView.js":"l60JC","./views/searchView.js":"9OQAM","./views/resultsView.js":"cSbZE","./views/paginationView.js":"6z7bi","regenerator-runtime/runtime":"dXNgZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./views/bookmarksView.js":"4Lqzq","./views/View.js":"5cUXS","./views/addRecipeView.js":"i6DNj"}],"49tUX":[function(require,module,exports) {
+},{"core-js/modules/web.immediate.js":"49tUX","./model.js":"Y4A21","./views/recipeView.js":"l60JC","./views/searchView.js":"9OQAM","./views/resultsView.js":"cSbZE","./views/paginationView.js":"6z7bi","regenerator-runtime/runtime":"dXNgZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./views/bookmarksView.js":"4Lqzq","./views/View.js":"5cUXS","./views/addRecipeView.js":"i6DNj","./config.js":"k5Hzs"}],"49tUX":[function(require,module,exports) {
 "use strict";
 // TODO: Remove this module from `core-js@4` since it's split to modules listed below
 require("52e9b3eefbbce1ed");
@@ -1919,6 +1937,7 @@ parcelHelpers.export(exports, "getSearchDataPart", ()=>getSearchDataPart);
 parcelHelpers.export(exports, "changeServings", ()=>changeServings);
 parcelHelpers.export(exports, "addBookmark", ()=>addBookmark);
 parcelHelpers.export(exports, "removeBookmark", ()=>removeBookmark);
+parcelHelpers.export(exports, "uploadRecipeData", ()=>uploadRecipeData);
 var _config = require("./config");
 // Fetch helper
 var _helpers = require("./helpers");
@@ -1937,7 +1956,7 @@ const loadSearchResults = async function(dish) {
         // Сохраняем блюдо из поиска
         state.search.dish = dish;
         // Запрашиваем данные рецептов на основе блюда из инпута
-        const data = await (0, _helpers.getData)(`${(0, _config.API_URL)}?search=${dish}&key=b8654b87-eb3f-4393-b226-d15907312864`);
+        const data = await (0, _helpers.getData)(`${(0, _config.API_URL)}?search=${dish}&key=${(0, _config.KEY)}`);
         // Общее количество страниц необходимое для отображаения рецептов
         state.search.totalPages = Math.ceil(data.data.recipes.length / state.search.itemsPerPage);
         state.search.results = data.data.recipes.map((recipe)=>{
@@ -1952,20 +1971,28 @@ const loadSearchResults = async function(dish) {
         throw err;
     }
 };
+// Ф-я переформатирования св-в обьекта
+const formatObjectData = function(dataObj) {
+    const { recipe } = dataObj.data;
+    return {
+        cookingTime: recipe.cooking_time,
+        id: recipe.id,
+        imageUrl: recipe.image_url,
+        ingredients: recipe.ingredients,
+        publisher: recipe.publisher,
+        servings: recipe.servings,
+        sourceUrl: recipe.source_url,
+        title: recipe.title,
+        ...recipe.key && {
+            key: recipe.key
+        }
+    };
+};
 const loadRecipe = async function(recipeId) {
     try {
         const data = await (0, _helpers.getData)((0, _config.API_URL) + recipeId);
-        const { recipe } = data.data;
-        state.recipe = {
-            cookingTime: recipe.cooking_time,
-            id: recipe.id,
-            imageUrl: recipe.image_url,
-            ingredients: recipe.ingredients,
-            publisher: recipe.publisher,
-            servings: recipe.servings,
-            sourceUrl: recipe.source_url,
-            title: recipe.title
-        };
+        // Переформатируем св-ва обьекта
+        state.recipe = formatObjectData(data);
         // Есть ли рецепт в закладках
         state.recipe.bookmarked = state.bookmarks.some((bookmarkedRecipe)=>bookmarkedRecipe.id === recipeId);
     } catch (err) {
@@ -2011,7 +2038,39 @@ const init = function() {
     const storage = JSON.parse(localStorage.getItem("bookmarks"));
     if (storage) state.bookmarks = storage;
 };
-const sendRecipeData = function(data) {};
+const uploadRecipeData = async function(ownRecipeData) {
+    try {
+        // Данные из формы => форматируем под стандарт API
+        const ingredients = Object.entries(ownRecipeData).filter((entry)=>entry[0].includes("ingredient") && entry[1] !== "").map((ingr)=>{
+            const ingrArr = ingr[1].split(",");
+            // Если в инпуте меньше 3х св-в(quantity, unit, description)
+            if (ingrArr.length !== 3) throw new Error("Wrong ingredients format. Please, follow the example formatting");
+            const [quantity, unit, description] = ingrArr;
+            return {
+                quantity: quantity,
+                unit,
+                description
+            };
+        });
+        // Итоговый обьект с данными для отправки на сервер
+        const recipe = {
+            cooking_time: +ownRecipeData.cookingTime,
+            image_url: ownRecipeData.image,
+            publisher: ownRecipeData.publisher,
+            servings: +ownRecipeData.servings,
+            source_url: ownRecipeData.sourceUrl,
+            title: ownRecipeData.title,
+            ingredients
+        };
+        const data = await (0, _helpers.sendData)(`${(0, _config.API_URL)}?key=${(0, _config.KEY)}`, recipe);
+        // Переформатируем полученные данные от сервера под формат нашего приложения
+        state.recipe = formatObjectData(data);
+        // Закинем их в закладки
+        addBookmark(state.recipe);
+    } catch (err) {
+        throw err;
+    }
+};
 init();
 
 },{"./config":"k5Hzs","./helpers":"hGI1E","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"k5Hzs":[function(require,module,exports) {
@@ -2019,11 +2078,15 @@ init();
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "API_URL", ()=>API_URL);
+parcelHelpers.export(exports, "KEY", ()=>KEY);
 parcelHelpers.export(exports, "TIMEOUT_SEC", ()=>TIMEOUT_SEC);
 parcelHelpers.export(exports, "ITEMS_PER_PAGE", ()=>ITEMS_PER_PAGE);
+parcelHelpers.export(exports, "FORM_HIDE_SEC", ()=>FORM_HIDE_SEC);
 const API_URL = "https://forkify-api.herokuapp.com/api/v2/recipes/";
+const KEY = "973a1341-2ca5-4ca7-806d-395d086d375d";
 const TIMEOUT_SEC = 10;
 const ITEMS_PER_PAGE = 10;
+const FORM_HIDE_SEC = 2.5;
 
 },{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"gkKU3":[function(require,module,exports) {
 exports.interopDefault = function(a) {
@@ -2060,6 +2123,7 @@ exports.export = function(dest, destName, get) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "getData", ()=>getData);
+parcelHelpers.export(exports, "sendData", ()=>sendData);
 var _config = require("./config");
 // Функция для защиты от бесконечно длящегося промиса
 const timeout = function(s) {
@@ -2075,8 +2139,28 @@ const getData = async function(url) {
             fetch(url),
             timeout((0, _config.TIMEOUT_SEC))
         ]);
-        if (!response.ok) throw new Error(`${data.message}(${response.status})`);
         const data = await response.json();
+        if (!response.ok) throw new Error(`${data.message}(${response.status})`);
+        return data;
+    } catch (err) {
+        throw err;
+    }
+};
+const sendData = async function(url, recipeData) {
+    try {
+        const fetchData = fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(recipeData)
+        });
+        const response = await Promise.race([
+            fetchData,
+            timeout((0, _config.TIMEOUT_SEC))
+        ]);
+        const data = await response.json();
+        if (!response.ok) throw new Error(`${data.message}(${response.status})`);
         return data;
     } catch (err) {
         throw err;
@@ -3351,6 +3435,7 @@ class addRecipeView extends (0, _view.View) {
     _recipeForm = document.querySelector(".add-recipe-window");
     _btnOpen = document.querySelector(".nav__btn--add-recipe");
     _btnClose = document.querySelector(".btn--close-modal");
+    _succesMessage = "Your recipe was succefully uploaded";
     constructor(){
         super();
         this._addHandlerShowForm();

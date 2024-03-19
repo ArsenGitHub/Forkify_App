@@ -7,6 +7,7 @@ class addRecipeView extends View {
   _recipeForm = document.querySelector('.add-recipe-window');
   _btnOpen = document.querySelector('.nav__btn--add-recipe');
   _btnClose = document.querySelector('.btn--close-modal');
+  _succesMessage = 'Your recipe was succefully uploaded';
 
   constructor() {
     super();

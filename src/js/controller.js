@@ -7,6 +7,7 @@ import resultsView from './views/resultsView.js';
 import paginationView from './views/paginationView.js';
 import bookmarksView from './views/bookmarksView.js';
 import addRecipeView from './views/addRecipeView.js';
+import { FORM_HIDE_SEC } from './config.js';
 
 // Полифилы
 import 'core-js/stable';
@@ -91,7 +92,24 @@ const controlBookmarksList = function () {
   bookmarksView.render(model.state.bookmarks);
 };
 
-const controlAddRecipe = function (ownRecipeData) {};
+// Отправка данных св-его рецепта и его отображение
+const controlAddRecipe = async function (ownRecipeData) {
+  try {
+    addRecipeView.renderSpinner();
+    // Отправляем данные на сервер
+    await model.uploadRecipeData(ownRecipeData);
+    // Отображаем наш отправленный рецепт
+    recipeView.render(model.state.recipe);
+    // Отображаем вместо формы сообщение об успешной отправке данных
+    addRecipeView.renderSuccess();
+    // Скрывем форму и оверлэй
+    setTimeout(function () {
+      addRecipeView._handlerShowHide();
+    }, FORM_HIDE_SEC * 1000);
+  } catch (err) {
+    addRecipeView.renderError(err.message);
+  }
+};
 
 const init = function () {
   recipeView.addHandlerRender(controlRecipe);
@@ -100,6 +118,6 @@ const init = function () {
   bookmarksView.addHandlerRender(controlBookmarksList);
   searchView.addHandlerSearch(controlSearchResults);
   paginationView.addHandlerPagination(controlPagination);
-  addRecipeView.addHandlerUdload(controlAddRecipe);
+  addRecipeView.addHandlerUpload(controlAddRecipe);
 };
 init();
